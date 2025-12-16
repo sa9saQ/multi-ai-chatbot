@@ -1,6 +1,6 @@
 import { streamText, APICallError } from 'ai'
 import { getLanguageModel } from '@/lib/ai/providers'
-import { sanitizeInput, validateApiKey } from '@/lib/ai/sanitize'
+import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
 import type { AIProvider } from '@/types/ai'
 
 export const runtime = 'edge'
@@ -44,6 +44,18 @@ export async function POST(req: Request) {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
+    }
+
+    // Check for prompt injection attempts in user messages
+    const userMessages = messages.filter((m) => m.role === 'user')
+    for (const message of userMessages) {
+      if (containsDangerousPatterns(message.content)) {
+        console.warn('Potential prompt injection detected')
+        return new Response(
+          JSON.stringify({ error: 'Message contains disallowed content' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
     }
 
     const sanitizedMessages = messages.map((message) => ({

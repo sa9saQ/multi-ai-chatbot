@@ -13,6 +13,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useMounted } from '@/hooks/use-mounted'
+import { locales, type Locale } from '@/i18n/routing'
+
+// Map locale codes to translation keys
+const LOCALE_LABEL_KEYS: Record<Locale, string> = {
+  ja: 'languageJa',
+  en: 'languageEn',
+}
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -28,9 +35,10 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
   const pathname = usePathname()
 
   const handleLocaleChange = React.useCallback(
-    (newLocale: string) => {
-      // Use regex to safely replace only the locale segment at the start
-      const newPathname = pathname.replace(/^\/[a-z]{2}(\/|$)/, `/${newLocale}$1`)
+    (newLocale: Locale) => {
+      // Use locales constant for type-safe regex pattern
+      const localePattern = new RegExp(`^/(${locales.join('|')})(/|$)`)
+      const newPathname = pathname.replace(localePattern, `/${newLocale}$2`)
       router.push(newPathname)
     },
     [pathname, router]
@@ -63,18 +71,15 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => handleLocaleChange('ja')}
-              className={locale === 'ja' ? 'bg-accent' : ''}
-            >
-              日本語
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleLocaleChange('en')}
-              className={locale === 'en' ? 'bg-accent' : ''}
-            >
-              English
-            </DropdownMenuItem>
+            {locales.map((loc) => (
+              <DropdownMenuItem
+                key={loc}
+                onClick={() => handleLocaleChange(loc)}
+                className={locale === loc ? 'bg-accent' : ''}
+              >
+                {t(LOCALE_LABEL_KEYS[loc])}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
