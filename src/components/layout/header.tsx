@@ -27,16 +27,20 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
   const router = useRouter()
   const pathname = usePathname()
 
-  const handleLocaleChange = (newLocale: string) => {
-    const newPathname = pathname.replace(`/${locale}`, `/${newLocale}`)
-    router.push(newPathname)
-  }
+  const handleLocaleChange = React.useCallback(
+    (newLocale: string) => {
+      // Use regex to safely replace only the locale segment at the start
+      const newPathname = pathname.replace(/^\/[a-z]{2}(\/|$)/, `/${newLocale}$1`)
+      router.push(newPathname)
+    },
+    [pathname, router]
+  )
 
-  const ThemeIcon = () => {
+  const ThemeIcon = React.useMemo(() => {
     if (!mounted) return <Monitor className="h-4 w-4" />
     if (resolvedTheme === 'dark') return <Moon className="h-4 w-4" />
     return <Sun className="h-4 w-4" />
-  }
+  }, [mounted, resolvedTheme])
 
   return (
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
@@ -77,7 +81,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
-              <ThemeIcon />
+              {ThemeIcon}
               <span className="sr-only">{t('theme')}</span>
             </Button>
           </DropdownMenuTrigger>

@@ -1,4 +1,4 @@
-import { streamText } from 'ai'
+import { streamText, APICallError } from 'ai'
 import { getLanguageModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey } from '@/lib/ai/sanitize'
 import type { AIProvider } from '@/types/ai'
@@ -62,19 +62,26 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Chat API error:', error)
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    // Use APICallError.isInstance() for type-safe error handling
+    if (APICallError.isInstance(error)) {
+      if (error.statusCode === 401) {
+        return new Response(JSON.stringify({ error: 'Invalid API key' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
 
-    if (errorMessage.includes('401') || errorMessage.includes('Invalid API key')) {
-      return new Response(JSON.stringify({ error: 'Invalid API key' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
+      if (error.statusCode === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
 
-    if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+      // Return the actual status code from the API error
       return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: error.message || 'API error occurred' }),
+        { status: error.statusCode ?? 500, headers: { 'Content-Type': 'application/json' } }
       )
     }
 

@@ -25,7 +25,7 @@ export function CodeBlock({ language, code, className }: CodeBlockProps) {
     }
   }, [])
 
-  const handleCopy = async () => {
+  const handleCopy = React.useCallback(async () => {
     try {
       await navigator.clipboard.writeText(code)
       setCopied(true)
@@ -39,7 +39,7 @@ export function CodeBlock({ language, code, className }: CodeBlockProps) {
     } catch (error) {
       console.error('Failed to copy:', error)
     }
-  }
+  }, [code])
 
   return (
     <div className={cn('my-2 overflow-hidden rounded-lg border bg-muted/50', className)}>

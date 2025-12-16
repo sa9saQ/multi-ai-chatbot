@@ -24,6 +24,7 @@
     "send": "送信",
     "thinking": "考え中...",
     "noMessages": "メッセージはまだありません",
+    "messageHistory": "メッセージ履歴",
     "errorOccurred": "エラーが発生しました。もう一度お試しください。",
     "apiKeyMissing": "APIキーが設定されていません。設定画面でAPIキーを入力してください。",
     "deleteConfirm": "この会話を削除しますか？",

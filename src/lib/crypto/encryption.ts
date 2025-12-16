@@ -28,6 +28,10 @@ async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
 }
 
 export async function encrypt(plaintext: string): Promise<string> {
+  if (!isEncryptionSupported()) {
+    throw new Error('Web Crypto API is not supported in this environment')
+  }
+
   const key = await getOrCreateEncryptionKey()
 
   // Generate a random IV
@@ -49,6 +53,10 @@ export async function encrypt(plaintext: string): Promise<string> {
 }
 
 export async function decrypt(encryptedData: string): Promise<string> {
+  if (!isEncryptionSupported()) {
+    throw new Error('Web Crypto API is not supported in this environment')
+  }
+
   const key = await getOrCreateEncryptionKey()
 
   // Decode from base64

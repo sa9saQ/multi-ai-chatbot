@@ -4,6 +4,10 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { AIProvider } from '@/types/ai'
 
 export function createAIProvider(provider: AIProvider, apiKey: string) {
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error(`API key is required for provider: ${provider}`)
+  }
+
   switch (provider) {
     case 'openai':
       return createOpenAI({

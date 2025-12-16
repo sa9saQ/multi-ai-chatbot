@@ -99,7 +99,7 @@ export function ChatArea() {
       id: m.id,
       role: m.role as 'user' | 'assistant',
       content: m.content,
-      createdAt: new Date(),
+      createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
     }))
   }, [messages])
 

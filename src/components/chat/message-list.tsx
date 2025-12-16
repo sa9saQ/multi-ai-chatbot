@@ -37,12 +37,12 @@ export function MessageList({ messages, isLoading, className }: MessageListProps
       ref={scrollRef}
       className={cn('flex-1', className)}
     >
-      <div className="flex flex-col">
+      <div className="flex flex-col" role="log" aria-live="polite" aria-label={t('messageHistory')}>
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
         {isLoading && (
-          <div className="p-4">
+          <div className="p-4" aria-busy="true">
             <TypingIndicator />
           </div>
         )}

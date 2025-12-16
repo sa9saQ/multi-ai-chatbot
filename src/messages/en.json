@@ -24,6 +24,7 @@
     "send": "Send",
     "thinking": "Thinking...",
     "noMessages": "No messages yet",
+    "messageHistory": "Message history",
     "errorOccurred": "An error occurred. Please try again.",
     "apiKeyMissing": "API key is not set. Please enter your API key in settings.",
     "deleteConfirm": "Delete this conversation?",

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useLocale } from 'next-intl'
 import { User, Bot } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Message } from '@/types/chat'
@@ -47,6 +48,7 @@ function parseMessageContent(content: string): React.ReactNode[] {
 }
 
 export function ChatMessage({ message, className }: ChatMessageProps) {
+  const locale = useLocale()
   const isUser = message.role === 'user'
 
   return (
@@ -78,8 +80,9 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
             'text-xs',
             isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
           )}
+          dateTime={new Date(message.createdAt).toISOString()}
         >
-          {new Date(message.createdAt).toLocaleTimeString([], {
+          {new Date(message.createdAt).toLocaleTimeString(locale, {
             hour: '2-digit',
             minute: '2-digit',
           })}

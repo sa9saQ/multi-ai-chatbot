@@ -42,9 +42,14 @@ export const useTemplatesStore = create<TemplatesState & TemplatesActions>()(
 
       updateCustomTemplate: (id, updates) => {
         set((state) => ({
-          customTemplates: state.customTemplates.map((t) =>
-            t.id === id ? { ...t, ...updates } : t
-          ),
+          customTemplates: state.customTemplates.map((t) => {
+            if (t.id !== id) return t
+            // Explicitly preserve id and isCustom fields
+            const { id: _id, isCustom: _isCustom, ...safeUpdates } = updates as Record<string, unknown>
+            void _id
+            void _isCustom
+            return { ...t, ...safeUpdates }
+          }),
         }))
       },
 
