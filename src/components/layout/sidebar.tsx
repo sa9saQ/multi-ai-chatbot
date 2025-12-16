@@ -1,0 +1,81 @@
+'use client'
+
+import * as React from 'react'
+import { useTranslations } from 'next-intl'
+import { Plus, Settings } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { SidebarItem } from './sidebar-item'
+import { useChatStore } from '@/hooks/use-chat-store'
+import { cn } from '@/lib/utils'
+
+interface SidebarProps {
+  className?: string
+  onSettingsClick?: () => void
+}
+
+export function Sidebar({ className, onSettingsClick }: SidebarProps) {
+  const t = useTranslations('sidebar')
+  const {
+    currentConversationId,
+    createConversation,
+    deleteConversation,
+    selectConversation,
+    updateConversationTitle,
+    getConversationSummaries,
+  } = useChatStore()
+
+  const conversations = getConversationSummaries()
+
+  const handleNewChat = () => {
+    createConversation()
+  }
+
+  return (
+    <aside
+      className={cn(
+        'flex h-full w-64 flex-col border-r bg-muted/30',
+        className
+      )}
+    >
+      <div className="p-2">
+        <Button className="w-full justify-start gap-2" onClick={handleNewChat}>
+          <Plus className="h-4 w-4" />
+          {t('newChat')}
+        </Button>
+      </div>
+
+      <ScrollArea className="flex-1 px-2">
+        <div className="space-y-1 pb-2">
+          {conversations.length === 0 ? (
+            <p className="p-4 text-center text-sm text-muted-foreground">
+              {t('noConversations')}
+            </p>
+          ) : (
+            conversations.map((conversation) => (
+              <SidebarItem
+                key={conversation.id}
+                conversation={conversation}
+                isActive={conversation.id === currentConversationId}
+                onSelect={() => selectConversation(conversation.id)}
+                onDelete={() => deleteConversation(conversation.id)}
+                onRename={(title) => updateConversationTitle(conversation.id, title)}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
+
+      <div className="border-t p-2">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2"
+          onClick={onSettingsClick}
+        >
+          <Settings className="h-4 w-4" />
+          {t('settings')}
+        </Button>
+      </div>
+    </aside>
+  )
+}
