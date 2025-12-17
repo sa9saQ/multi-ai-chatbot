@@ -98,6 +98,8 @@ export function ChatArea() {
   const isLoading = status === 'streaming' || status === 'submitted'
 
   const handleSubmit = async () => {
+    // Guard against double submission (Enter key bypasses disabled attribute)
+    if (isLoading) return
     if (!inputValue.trim()) return
 
     if (!hasApiKey(selectedProvider)) {
