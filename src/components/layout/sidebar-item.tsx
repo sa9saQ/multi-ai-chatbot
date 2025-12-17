@@ -82,12 +82,15 @@ export function SidebarItem({
           onKeyDown={handleKeyDown}
           className="h-8 flex-1"
           maxLength={MAX_TITLE_LENGTH}
+          aria-label={t('editTitle')}
         />
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
           <Check className="h-4 w-4" />
+          <span className="sr-only">{t('save')}</span>
         </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>
           <X className="h-4 w-4" />
+          <span className="sr-only">{t('cancel')}</span>
         </Button>
       </div>
     )

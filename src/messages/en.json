@@ -39,7 +39,9 @@
     "newChat": "New Chat",
     "settings": "Settings",
     "messages": "messages",
-    "deleteConversation": "Delete conversation"
+    "deleteConversation": "Delete conversation",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "model": {
     "select": "Select Model",

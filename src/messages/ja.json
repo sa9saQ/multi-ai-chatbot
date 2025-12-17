@@ -39,7 +39,9 @@
     "newChat": "新規チャット",
     "settings": "設定",
     "messages": "メッセージ",
-    "deleteConversation": "会話を削除"
+    "deleteConversation": "会話を削除",
+    "save": "保存",
+    "cancel": "キャンセル"
   },
   "model": {
     "select": "モデルを選択",

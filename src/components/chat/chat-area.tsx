@@ -93,7 +93,7 @@ export function ChatArea() {
           content: m.content,
         })) ?? []
     setMessages(newMessages)
-  }, [currentConversationId, setMessages]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentConversationId, conversation, setMessages])
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
