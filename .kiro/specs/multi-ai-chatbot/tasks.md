@@ -204,10 +204,10 @@ useChatフックを使用したチャット機能の統合を実装する。
 
 ### Sub-tasks
 
-- [ ] 14.1 新規チャット作成機能実装
-- [ ] 14.2 会話選択・履歴読み込み機能実装
-- [ ] 14.3 会話削除機能実装（確認ダイアログ付き、i18n対応）
-- [ ] 14.4 会話タイトル編集機能実装
+- [x] 14.1 新規チャット作成機能実装
+- [x] 14.2 会話選択・履歴読み込み機能実装
+- [x] 14.3 会話削除機能実装（確認ダイアログ付き、i18n対応）
+- [x] 14.4 会話タイトル編集機能実装
 
 ---
 
@@ -219,10 +219,10 @@ useChatフックを使用したチャット機能の統合を実装する。
 
 ### Sub-tasks
 
-- [ ] 15.1 テンプレートリストコンポーネント作成（`components/templates/template-list.tsx`）
-- [ ] 15.2 テンプレートカードコンポーネント作成（`components/templates/template-card.tsx`: 選択時入力フォーム挿入）
-- [ ] 15.3 カテゴリー表示コンポーネント作成（`components/templates/template-category.tsx`）
-- [ ] 15.4 テンプレートエディター作成（`components/templates/template-editor.tsx`: カスタムテンプレート作成・編集・削除）
+- [x] 15.1 テンプレートリストコンポーネント作成（`components/templates/template-list.tsx`）
+- [x] 15.2 テンプレートカードコンポーネント作成（`components/templates/template-card.tsx`: 選択時入力フォーム挿入）
+- [x] 15.3 カテゴリー表示コンポーネント作成（`components/templates/template-category.tsx`）
+- [x] 15.4 テンプレートエディター作成（`components/templates/template-editor.tsx`: カスタムテンプレート作成・編集・削除）
 
 ---
 

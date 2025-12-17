@@ -1,0 +1,83 @@
+'use client'
+
+import * as React from 'react'
+import { useTranslations } from 'next-intl'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { TemplateCategory } from './template-category'
+import { useTemplatesStore } from '@/hooks/use-templates-store'
+import type { Template, TemplateCategory as TemplateCategoryType } from '@/types/template'
+
+interface TemplateListProps {
+  onSelectTemplate: (prompt: string) => void
+  onCreateTemplate?: () => void
+  onEditTemplate?: (template: Template) => void
+  onDeleteTemplate?: (id: string) => void
+}
+
+export function TemplateList({
+  onSelectTemplate,
+  onCreateTemplate,
+  onEditTemplate,
+  onDeleteTemplate,
+}: TemplateListProps) {
+  const t = useTranslations('template')
+  const { getAllTemplates, deleteCustomTemplate } = useTemplatesStore()
+
+  const templates = getAllTemplates()
+
+  // Group templates by category
+  const templatesByCategory = React.useMemo(() => {
+    const grouped: Record<TemplateCategoryType, Template[]> = {
+      coding: [],
+      writing: [],
+      translation: [],
+      analysis: [],
+      custom: [],
+    }
+
+    for (const template of templates) {
+      grouped[template.category].push(template)
+    }
+
+    return grouped
+  }, [templates])
+
+  const handleDelete = (id: string) => {
+    deleteCustomTemplate(id)
+    onDeleteTemplate?.(id)
+  }
+
+  // Get category order (custom templates at the end)
+  const categoryOrder: TemplateCategoryType[] = ['coding', 'writing', 'translation', 'analysis', 'custom']
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <h2 className="text-sm font-semibold">{t('title')}</h2>
+        {onCreateTemplate && (
+          <Button variant="ghost" size="sm" onClick={onCreateTemplate}>
+            <Plus className="mr-1 h-4 w-4" />
+            {t('create')}
+          </Button>
+        )}
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="space-y-2 p-4">
+          {categoryOrder.map((category) => (
+            <TemplateCategory
+              key={category}
+              category={category}
+              templates={templatesByCategory[category]}
+              defaultOpen={category !== 'custom'}
+              onSelectTemplate={onSelectTemplate}
+              onEditTemplate={onEditTemplate}
+              onDeleteTemplate={handleDelete}
+            />
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+}
