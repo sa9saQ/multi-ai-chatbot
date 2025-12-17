@@ -44,7 +44,13 @@ export function ChatArea() {
     loadApiKey()
   }, [selectedProvider, getApiKey])
 
-  const conversation = getCurrentConversation()
+  // Memoize to avoid recalculating on every render
+  // currentConversationId is needed to trigger recalculation when conversation changes
+  const conversation = React.useMemo(
+    () => getCurrentConversation(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentConversationId, getCurrentConversation]
+  )
 
   const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
@@ -81,11 +87,13 @@ export function ChatArea() {
     },
   })
 
-  // Sync messages when conversation changes
-  // useChat's initialMessages only applies on mount, so we need to manually sync
+  // Sync messages only when switching conversations (ID change)
+  // We intentionally omit 'conversation' to avoid syncing on every message addition,
+  // which would interfere with useChat's internal state during streaming
   React.useEffect(() => {
+    const conv = getCurrentConversation()
     const newMessages =
-      conversation?.messages
+      conv?.messages
         .filter((m) => isSupportedRole(m.role))
         .map((m) => ({
           id: m.id,
@@ -93,7 +101,8 @@ export function ChatArea() {
           content: m.content,
         })) ?? []
     setMessages(newMessages)
-  }, [currentConversationId, conversation, setMessages])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentConversationId, setMessages])
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
