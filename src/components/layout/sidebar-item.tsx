@@ -17,6 +17,8 @@ interface SidebarItemProps {
   onRename: (newTitle: string) => void
 }
 
+const MAX_TITLE_LENGTH = 100
+
 export function SidebarItem({
   conversation,
   isActive,
@@ -29,6 +31,11 @@ export function SidebarItem({
   const [editTitle, setEditTitle] = React.useState(conversation.title)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
+  // Sync local state when prop changes from parent
+  React.useEffect(() => {
+    setEditTitle(conversation.title)
+  }, [conversation.title])
+
   React.useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus()
@@ -38,7 +45,11 @@ export function SidebarItem({
 
   const handleSave = () => {
     const trimmedTitle = editTitle.trim()
-    if (trimmedTitle && trimmedTitle !== conversation.title) {
+    if (
+      trimmedTitle &&
+      trimmedTitle !== conversation.title &&
+      trimmedTitle.length <= MAX_TITLE_LENGTH
+    ) {
       onRename(trimmedTitle)
     } else {
       setEditTitle(conversation.title)
@@ -70,6 +81,7 @@ export function SidebarItem({
           onChange={(e) => setEditTitle(e.target.value)}
           onKeyDown={handleKeyDown}
           className="h-8 flex-1"
+          maxLength={MAX_TITLE_LENGTH}
         />
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
           <Check className="h-4 w-4" />

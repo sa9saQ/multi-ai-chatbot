@@ -9,7 +9,13 @@ import { MessageList } from './message-list'
 import { ChatInput } from './chat-input'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { useSettingsStore } from '@/hooks/use-settings-store'
-import type { Message } from '@/types/chat'
+import type { Message, MessageRole } from '@/types/chat'
+
+// Type guard for supported message roles
+const SUPPORTED_ROLES: readonly MessageRole[] = ['user', 'assistant'] as const
+function isSupportedRole(role: string): role is MessageRole {
+  return SUPPORTED_ROLES.includes(role as MessageRole)
+}
 
 export function ChatArea() {
   const t = useTranslations('chat')
@@ -79,11 +85,13 @@ export function ChatArea() {
   // useChat's initialMessages only applies on mount, so we need to manually sync
   React.useEffect(() => {
     const newMessages =
-      conversation?.messages.map((m) => ({
-        id: m.id,
-        role: m.role as 'user' | 'assistant' | 'system',
-        content: m.content,
-      })) ?? []
+      conversation?.messages
+        .filter((m) => isSupportedRole(m.role))
+        .map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+        })) ?? []
     setMessages(newMessages)
   }, [currentConversationId, setMessages]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,12 +127,14 @@ export function ChatArea() {
   }
 
   const displayMessages: Message[] = React.useMemo(() => {
-    return messages.map((m) => ({
-      id: m.id,
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-      createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
-    }))
+    return messages
+      .filter((m) => isSupportedRole(m.role))
+      .map((m) => ({
+        id: m.id,
+        role: m.role as MessageRole,
+        content: m.content,
+        createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+      }))
   }, [messages])
 
   return (

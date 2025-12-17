@@ -29,10 +29,10 @@
 
 ### Sub-tasks
 
-- [ ] 2.1 AI関連型定義作成（`types/ai.ts`: AIProvider, AIModel, AI_MODELS定数）
-- [ ] 2.2 チャット関連型定義作成（`types/chat.ts`: Message, Conversation, ConversationSummary）
-- [ ] 2.3 テンプレート関連型定義作成（`types/template.ts`: TemplateCategory, Template）
-- [ ] 2.4 設定関連型定義作成（`types/settings.ts`: Settings, ProviderApiKeys）
+- [x] 2.1 AI関連型定義作成（`types/ai.ts`: AIProvider, AIModel, AI_MODELS定数）
+- [x] 2.2 チャット関連型定義作成（`types/chat.ts`: Message, Conversation, ConversationSummary）
+- [x] 2.3 テンプレート関連型定義作成（`types/template.ts`: TemplateCategory, Template）
+- [x] 2.4 設定関連型定義作成（`types/settings.ts`: Settings, ProviderApiKeys）
 
 ---
 
@@ -44,11 +44,11 @@ next-intlを使用した日本語/英語対応の基盤を構築する。
 
 ### Sub-tasks
 
-- [ ] 3.1 next-intlインストールと設定（`i18n/request.ts`, `i18n/routing.ts`）
-- [ ] 3.2 日本語翻訳ファイル作成（`messages/ja.json`）
-- [ ] 3.3 英語翻訳ファイル作成（`messages/en.json`）
-- [ ] 3.4 ロケール付きレイアウト作成（`app/[locale]/layout.tsx`）
-- [ ] 3.5 IntlProvider設定（`components/providers/intl-provider.tsx`）
+- [x] 3.1 next-intlインストールと設定（`i18n/request.ts`, `i18n/routing.ts`）
+- [x] 3.2 日本語翻訳ファイル作成（`messages/ja.json`）
+- [x] 3.3 英語翻訳ファイル作成（`messages/en.json`）
+- [x] 3.4 ロケール付きレイアウト作成（`app/[locale]/layout.tsx`）
+- [x] 3.5 IntlProvider設定（next-intl組み込み機能を使用）
 
 ---
 
@@ -60,9 +60,9 @@ next-themesを使用したダークモード/ライトモード切り替え機�
 
 ### Sub-tasks
 
-- [ ] 4.1 next-themesインストールとThemeProvider設定（`components/providers/theme-provider.tsx`）
-- [ ] 4.2 グローバルCSS変数設定（ダーク/ライト用カラー定義）
-- [ ] 4.3 テーマトグルコンポーネント作成（`components/layout/header.tsx`内）
+- [x] 4.1 next-themesインストールとThemeProvider設定（`components/providers/theme-provider.tsx`）
+- [x] 4.2 グローバルCSS変数設定（ダーク/ライト用カラー定義）
+- [x] 4.3 テーマトグルコンポーネント作成（`components/layout/header.tsx`内）
 
 ---
 
@@ -74,8 +74,8 @@ Web Crypto APIを使用したAPIキー暗号化機能を実装する。
 
 ### Sub-tasks
 
-- [ ] 5.1 暗号化/復号化関数作成（`lib/crypto/encryption.ts`: AES-GCM暗号化）
-- [ ] 5.2 暗号化キー管理（ブラウザ固有キーの生成・保存）
+- [x] 5.1 暗号化/復号化関数作成（`lib/crypto/encryption.ts`: AES-GCM暗号化）
+- [x] 5.2 暗号化キー管理（ブラウザ固有キーの生成・保存）
 
 ---
 
@@ -87,9 +87,9 @@ Web Crypto APIを使用したAPIキー暗号化機能を実装する。
 
 ### Sub-tasks
 
-- [ ] 6.1 (P) チャットストア作成（`hooks/use-chat-store.ts`: 会話管理、メッセージ追加、モデル切り替え）
-- [ ] 6.2 (P) 設定ストア作成（`hooks/use-settings-store.ts`: APIキー管理、言語/テーマ設定）
-- [ ] 6.3 (P) テンプレートストア作成（`hooks/use-templates-store.ts`: プリセット/カスタムテンプレート管理）
+- [x] 6.1 (P) チャットストア作成（`hooks/use-chat-store.ts`: 会話管理、メッセージ追加、モデル切り替え）
+- [x] 6.2 (P) 設定ストア作成（`hooks/use-settings-store.ts`: APIキー管理、言語/テーマ設定）
+- [x] 6.3 (P) テンプレートストア作成（`hooks/use-templates-store.ts`: プリセット/カスタムテンプレート管理）
 - [x] 6.4 ユーティリティフック作成（`hooks/use-local-storage.ts`, `hooks/use-mounted.ts`）
 
 ---
@@ -102,11 +102,11 @@ Web Crypto APIを使用したAPIキー暗号化機能を実装する。
 
 ### Sub-tasks
 
-- [ ] 7.1 ヘッダーコンポーネント作成（`components/layout/header.tsx`: ロゴ、言語切替、テーマ切替）
-- [ ] 7.2 サイドバーコンポーネント作成（`components/layout/sidebar.tsx`: 会話一覧、新規チャットボタン）
-- [ ] 7.3 サイドバーアイテムコンポーネント作成（`components/layout/sidebar-item.tsx`: 会話選択、削除、タイトル編集）
-- [ ] 7.4 モバイルナビゲーション作成（`components/layout/mobile-nav.tsx`: Sheet使用のハンバーガーメニュー）
-- [ ] 7.5 メインページレイアウト統合（`app/[locale]/page.tsx`）
+- [x] 7.1 ヘッダーコンポーネント作成（`components/layout/header.tsx`: ロゴ、言語切替、テーマ切替）
+- [x] 7.2 サイドバーコンポーネント作成（`components/layout/sidebar.tsx`: 会話一覧、新規チャットボタン）
+- [x] 7.3 サイドバーアイテムコンポーネント作成（`components/layout/sidebar-item.tsx`: 会話選択、削除、タイトル編集）
+- [x] 7.4 モバイルナビゲーション作成（`components/layout/mobile-nav.tsx`: Sheet使用のハンバーガーメニュー）
+- [x] 7.5 メインページレイアウト統合（`app/[locale]/page.tsx`）
 
 ---
 
@@ -118,10 +118,10 @@ Vercel AI SDKを使用したストリーミングチャットAPIを実装する�
 
 ### Sub-tasks
 
-- [ ] 8.1 AI SDK依存関係インストール（ai, @ai-sdk/openai, @ai-sdk/anthropic, @ai-sdk/google）
-- [ ] 8.2 入力サニタイズ関数作成（`lib/ai/sanitize.ts`: プロンプトインジェクション対策）
-- [ ] 8.3 AIプロバイダー設定（`lib/ai/providers.ts`: プロバイダーファクトリ関数）
-- [ ] 8.4 チャットAPIルート作成（`app/api/chat/route.ts`: Edge Runtime、ストリーミングレスポンス）
+- [x] 8.1 AI SDK依存関係インストール（ai, @ai-sdk/openai, @ai-sdk/anthropic, @ai-sdk/google）
+- [x] 8.2 入力サニタイズ関数作成（`lib/ai/sanitize.ts`: プロンプトインジェクション対策）
+- [x] 8.3 AIプロバイダー設定（`lib/ai/providers.ts`: プロバイダーファクトリ関数）
+- [x] 8.4 チャットAPIルート作成（`app/api/chat/route.ts`: Edge Runtime、ストリーミングレスポンス）
 
 ---
 
@@ -133,9 +133,9 @@ AIモデル選択・表示機能を実装する。
 
 ### Sub-tasks
 
-- [ ] 9.1 モデルセレクターコンポーネント作成（`components/chat/model-selector.tsx`: プロバイダー別グループ化、Premiumバッジ）
-- [ ] 9.2 APIキー未設定モデルの選択不可状態表示
-- [ ] 9.3 現在選択中モデルの常時表示
+- [x] 9.1 モデルセレクターコンポーネント作成（`components/chat/model-selector.tsx`: プロバイダー別グループ化、Premiumバッジ）
+- [x] 9.2 APIキー未設定モデルの選択不可状態表示
+- [x] 9.3 現在選択中モデルの常時表示
 
 ---
 
@@ -147,9 +147,9 @@ AIモデル選択・表示機能を実装する。
 
 ### Sub-tasks
 
-- [ ] 10.1 メッセージコンポーネント作成（`components/chat/chat-message.tsx`: ユーザー/AI区別表示、タイムスタンプ）
-- [ ] 10.2 タイピングインジケーター作成（`components/chat/typing-indicator.tsx`）
-- [ ] 10.3 仮想化スクロールリスト実装（`components/chat/message-list.tsx`: @tanstack/react-virtual使用）
+- [x] 10.1 メッセージコンポーネント作成（`components/chat/chat-message.tsx`: ユーザー/AI区別表示、タイムスタンプ）
+- [x] 10.2 タイピングインジケーター作成（`components/chat/typing-indicator.tsx`）
+- [x] 10.3 仮想化スクロールリスト実装（`components/chat/message-list.tsx`: @tanstack/react-virtual使用）
 
 ---
 
@@ -161,9 +161,9 @@ AIモデル選択・表示機能を実装する。
 
 ### Sub-tasks
 
-- [ ] 11.1 コードブロックコンポーネント作成（`components/chat/code-block.tsx`: react-syntax-highlighter使用）
-- [ ] 11.2 コピーボタンとフィードバック実装（i18n対応:「コピーしました」/ "Copied!"）
-- [ ] 11.3 動的インポートによる遅延読み込み最適化
+- [x] 11.1 コードブロックコンポーネント作成（`components/chat/code-block.tsx`: react-syntax-highlighter使用）
+- [x] 11.2 コピーボタンとフィードバック実装（i18n対応:「コピーしました」/ "Copied!"）
+- [x] 11.3 動的インポートによる遅延読み込み最適化
 
 ---
 
@@ -175,9 +175,9 @@ AIモデル選択・表示機能を実装する。
 
 ### Sub-tasks
 
-- [ ] 12.1 チャット入力コンポーネント作成（`components/chat/chat-input.tsx`: Textarea、送信ボタン）
-- [ ] 12.2 キーボードハンドリング実装（Enter送信、Shift+Enter改行）
-- [ ] 12.3 アクセシビリティ属性追加（ARIA labels、role属性）
+- [x] 12.1 チャット入力コンポーネント作成（`components/chat/chat-input.tsx`: Textarea、送信ボタン）
+- [x] 12.2 キーボードハンドリング実装（Enter送信、Shift+Enter改行）
+- [x] 12.3 アクセシビリティ属性追加（ARIA labels、role属性）
 
 ---
 
@@ -189,10 +189,10 @@ useChatフックを使用したチャット機能の統合を実装する。
 
 ### Sub-tasks
 
-- [ ] 13.1 チャットエリアコンポーネント作成（`components/chat/chat-area.tsx`: useChat統合）
-- [ ] 13.2 ストリーミングレスポンス表示実装
-- [ ] 13.3 エラーハンドリング実装（i18n対応エラーメッセージ）
-- [ ] 13.4 会話タイトル自動生成（最初のメッセージから30文字）
+- [x] 13.1 チャットエリアコンポーネント作成（`components/chat/chat-area.tsx`: useChat統合）
+- [x] 13.2 ストリーミングレスポンス表示実装
+- [x] 13.3 エラーハンドリング実装（i18n対応エラーメッセージ）
+- [x] 13.4 会話タイトル自動生成（最初のメッセージから30文字）
 
 ---
 
