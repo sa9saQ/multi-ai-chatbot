@@ -3,6 +3,17 @@
 import * as React from 'react'
 import { useTranslations } from 'next-intl'
 import { Trash2, Pencil, Check, X } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -27,6 +38,8 @@ export function SidebarItem({
   onRename,
 }: SidebarItemProps) {
   const t = useTranslations('sidebar')
+  const tChat = useTranslations('chat')
+  const tCommon = useTranslations('common')
   const [isEditing, setIsEditing] = React.useState(false)
   const [editTitle, setEditTitle] = React.useState(conversation.title)
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -132,18 +145,36 @@ export function SidebarItem({
           <Pencil className="h-3 w-3" />
           <span className="sr-only">{t('editTitle')}</span>
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive hover:text-destructive"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
-        >
-          <Trash2 className="h-3 w-3" />
-          <span className="sr-only">{t('deleteConversation')}</span>
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Trash2 className="h-3 w-3" />
+              <span className="sr-only">{t('deleteConversation')}</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{tChat('deleteConfirm')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {tChat('deleteConfirmDescription')}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={onDelete}
+              >
+                {tCommon('delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
