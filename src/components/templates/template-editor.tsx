@@ -37,8 +37,9 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
 
   const isEditing = Boolean(template)
 
-  // Sync form state when template prop changes
+  // Sync form state when template prop changes or dialog opens
   React.useEffect(() => {
+    if (!open) return
     if (template) {
       setNameJa(template.name.ja)
       setNameEn(template.name.en)
@@ -50,7 +51,7 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
       setPromptJa('')
       setPromptEn('')
     }
-  }, [template])
+  }, [open, template])
 
   const isValid =
     nameJa.trim().length > 0 &&
@@ -88,48 +89,48 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name-ja">{t('name')} (日本語)</Label>
+            <Label htmlFor="name-ja">{t('name')} ({tCommon('languageJa')})</Label>
             <Input
               id="name-ja"
               value={nameJa}
               onChange={(e) => setNameJa(e.target.value)}
               maxLength={MAX_NAME_LENGTH}
-              placeholder="コードレビュー"
+              placeholder={t('namePlaceholderJa')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="name-en">{t('name')} (English)</Label>
+            <Label htmlFor="name-en">{t('name')} ({tCommon('languageEn')})</Label>
             <Input
               id="name-en"
               value={nameEn}
               onChange={(e) => setNameEn(e.target.value)}
               maxLength={MAX_NAME_LENGTH}
-              placeholder="Code Review"
+              placeholder={t('namePlaceholderEn')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="prompt-ja">{t('prompt')} (日本語)</Label>
+            <Label htmlFor="prompt-ja">{t('prompt')} ({tCommon('languageJa')})</Label>
             <Textarea
               id="prompt-ja"
               value={promptJa}
               onChange={(e) => setPromptJa(e.target.value)}
               maxLength={MAX_PROMPT_LENGTH}
               rows={3}
-              placeholder="以下のコードをレビューしてください："
+              placeholder={t('promptPlaceholderJa')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="prompt-en">{t('prompt')} (English)</Label>
+            <Label htmlFor="prompt-en">{t('prompt')} ({tCommon('languageEn')})</Label>
             <Textarea
               id="prompt-en"
               value={promptEn}
               onChange={(e) => setPromptEn(e.target.value)}
               maxLength={MAX_PROMPT_LENGTH}
               rows={3}
-              placeholder="Please review the following code:"
+              placeholder={t('promptPlaceholderEn')}
             />
           </div>
         </div>

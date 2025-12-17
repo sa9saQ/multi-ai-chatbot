@@ -43,6 +43,8 @@ export function TemplateCard({ template, onSelect, onEdit, onDelete }: TemplateC
       tabIndex={0}
       onClick={handleSelect}
       onKeyDown={(e) => {
+        // Prevent handling keyboard events from child elements (edit/delete buttons)
+        if (e.target !== e.currentTarget) return
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           handleSelect()

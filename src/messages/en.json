@@ -57,7 +57,11 @@
     "create": "Create Template",
     "name": "Template Name",
     "prompt": "Prompt",
-    "noCustom": "No custom templates"
+    "noCustom": "No custom templates",
+    "namePlaceholderJa": "コードレビュー",
+    "namePlaceholderEn": "Code Review",
+    "promptPlaceholderJa": "以下のコードをレビューしてください：",
+    "promptPlaceholderEn": "Please review the following code:"
   },
   "export": {
     "title": "Export",

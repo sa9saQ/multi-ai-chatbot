@@ -9,6 +9,9 @@ import { TemplateCategory } from './template-category'
 import { useTemplatesStore } from '@/hooks/use-templates-store'
 import type { Template, TemplateCategory as TemplateCategoryType } from '@/types/template'
 
+// Category display order (custom templates at the end)
+const CATEGORY_ORDER: TemplateCategoryType[] = ['coding', 'writing', 'translation', 'analysis', 'custom']
+
 interface TemplateListProps {
   onSelectTemplate: (prompt: string) => void
   onCreateTemplate?: () => void
@@ -49,9 +52,6 @@ export function TemplateList({
     onDeleteTemplate?.(id)
   }
 
-  // Get category order (custom templates at the end)
-  const categoryOrder: TemplateCategoryType[] = ['coding', 'writing', 'translation', 'analysis', 'custom']
-
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -65,7 +65,7 @@ export function TemplateList({
       </div>
       <ScrollArea className="flex-1">
         <div className="space-y-2 p-4">
-          {categoryOrder.map((category) => (
+          {CATEGORY_ORDER.map((category) => (
             <TemplateCategory
               key={category}
               category={category}
