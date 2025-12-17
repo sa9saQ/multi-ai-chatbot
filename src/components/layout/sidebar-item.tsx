@@ -42,7 +42,15 @@ export function SidebarItem({
   const tCommon = useTranslations('common')
   const [isEditing, setIsEditing] = React.useState(false)
   const [editTitle, setEditTitle] = React.useState(conversation.title)
+  const [isPending, startTransition] = React.useTransition()
   const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const handleConfirmDelete = () => {
+    if (isPending) return
+    startTransition(() => {
+      onDelete()
+    })
+  }
 
   // Sync local state when prop changes from parent
   React.useEffect(() => {
@@ -165,10 +173,13 @@ export function SidebarItem({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+              <AlertDialogCancel disabled={isPending}>
+                {tCommon('cancel')}
+              </AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-white hover:bg-destructive/90"
-                onClick={onDelete}
+                onClick={handleConfirmDelete}
+                disabled={isPending}
               >
                 {tCommon('delete')}
               </AlertDialogAction>
