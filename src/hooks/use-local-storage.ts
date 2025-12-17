@@ -1,35 +1,41 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+
+// Initialize value from localStorage (SSR-safe)
+function getStoredValue<T>(key: string, initialValue: T): T {
+  if (typeof window === 'undefined') {
+    return initialValue
+  }
+  try {
+    const item = localStorage.getItem(key)
+    return item ? (JSON.parse(item) as T) : initialValue
+  } catch (error) {
+    console.error(`Error reading localStorage key "${key}":`, error)
+    return initialValue
+  }
+}
 
 export function useLocalStorage<T>(
   key: string,
   initialValue: T
 ): [T, (value: T | ((prev: T) => T)) => void, () => void] {
-  const [storedValue, setStoredValue] = useState<T>(initialValue)
-
-  useEffect(() => {
-    try {
-      const item = localStorage.getItem(key)
-      if (item) {
-        setStoredValue(JSON.parse(item))
-      }
-    } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error)
-    }
-  }, [key])
+  // Initialize state with value from localStorage
+  const [storedValue, setStoredValue] = useState<T>(() => getStoredValue(key, initialValue))
 
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
       try {
-        const valueToStore = value instanceof Function ? value(storedValue) : value
-        setStoredValue(valueToStore)
-        localStorage.setItem(key, JSON.stringify(valueToStore))
+        setStoredValue((prev) => {
+          const valueToStore = value instanceof Function ? value(prev) : value
+          localStorage.setItem(key, JSON.stringify(valueToStore))
+          return valueToStore
+        })
       } catch (error) {
         console.error(`Error setting localStorage key "${key}":`, error)
       }
     },
-    [key, storedValue]
+    [key]
   )
 
   const removeValue = useCallback(() => {

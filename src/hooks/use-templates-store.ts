@@ -21,6 +21,14 @@ interface TemplatesActions {
 
 const generateId = () => crypto.randomUUID()
 
+// Helper to revive Date objects from ISO strings in templates
+function reviveTemplateDates(templates: Template[]): Template[] {
+  return templates.map((t) => ({
+    ...t,
+    createdAt: t.createdAt ? new Date(t.createdAt) : undefined,
+  }))
+}
+
 export const useTemplatesStore = create<TemplatesState & TemplatesActions>()(
   persist(
     (set, get) => ({
@@ -33,6 +41,7 @@ export const useTemplatesStore = create<TemplatesState & TemplatesActions>()(
           ...template,
           id,
           isCustom: true,
+          createdAt: new Date(),
         }
         set((state) => ({
           customTemplates: [...state.customTemplates, newTemplate],
@@ -80,6 +89,12 @@ export const useTemplatesStore = create<TemplatesState & TemplatesActions>()(
       partialize: (state) => ({
         customTemplates: state.customTemplates,
       }),
+      // Revive Date objects after rehydration from localStorage
+      onRehydrateStorage: () => (state) => {
+        if (state?.customTemplates) {
+          state.customTemplates = reviveTemplateDates(state.customTemplates)
+        }
+      },
     }
   )
 )

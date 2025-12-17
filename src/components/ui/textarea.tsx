@@ -2,6 +2,16 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Textarea component with auto-sizing support.
+ *
+ * Browser Support for `field-sizing: content`:
+ * - Chrome 123+, Edge 123+: Supported
+ * - Safari 17.4+: Supported
+ * - Firefox: Not supported (falls back to min-h-16 fixed height)
+ *
+ * The fallback min-height ensures usable appearance in unsupported browsers.
+ */
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.ComponentProps<"textarea">

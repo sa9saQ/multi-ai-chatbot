@@ -1,13 +1,17 @@
+// Prompt injection detection patterns
+// Note: Using 'i' flag only (case-insensitive), NOT 'g' flag.
+// The 'g' flag causes .test() to update lastIndex, making subsequent calls
+// start from that position instead of the beginning - a security vulnerability.
 const DANGEROUS_PATTERNS = [
-  /ignore\s+(all\s+)?previous\s+instructions?/gi,
-  /disregard\s+(all\s+)?previous\s+instructions?/gi,
-  /forget\s+(all\s+)?previous\s+instructions?/gi,
-  /you\s+are\s+now\s+/gi,
-  /act\s+as\s+if\s+/gi,
-  /pretend\s+(to\s+be|you\s+are)/gi,
-  /system\s*:\s*/gi,
-  /\[system\]/gi,
-  /<\/?system>/gi,
+  /ignore\s+(all\s+)?previous\s+instructions?/i,
+  /disregard\s+(all\s+)?previous\s+instructions?/i,
+  /forget\s+(all\s+)?previous\s+instructions?/i,
+  /you\s+are\s+now\s+/i,
+  /act\s+as\s+if\s+/i,
+  /pretend\s+(to\s+be|you\s+are)/i,
+  /system\s*:\s*/i,
+  /\[system\]/i,
+  /<\/?system>/i,
 ]
 
 const MAX_MESSAGE_LENGTH = 50000

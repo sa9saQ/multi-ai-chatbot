@@ -27,6 +27,9 @@ export function ChatArea() {
   const [apiKey, setApiKey] = React.useState<string | null>(null)
   const [inputValue, setInputValue] = React.useState('')
 
+  // Track the latest conversationId to avoid stale closure in onFinish callback
+  const conversationIdRef = React.useRef<string | null>(currentConversationId)
+
   React.useEffect(() => {
     const loadApiKey = async () => {
       const key = await getApiKey(selectedProvider)
@@ -37,7 +40,7 @@ export function ChatArea() {
 
   const conversation = getCurrentConversation()
 
-  const { messages, append, status, error } = useChat({
+  const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
     body: {
       modelId: selectedModelId,
@@ -55,12 +58,15 @@ export function ChatArea() {
     },
     onFinish: (message) => {
       setIsGenerating(false)
-      const convId = currentConversationId ?? createConversation()
-      addMessage(convId, {
-        role: 'assistant',
-        content: message.content,
-        modelId: selectedModelId,
-      })
+      // Use ref to get the latest conversationId, avoiding stale closure
+      const convId = conversationIdRef.current
+      if (convId) {
+        addMessage(convId, {
+          role: 'assistant',
+          content: message.content,
+          modelId: selectedModelId,
+        })
+      }
     },
     onError: (error) => {
       setIsGenerating(false)
@@ -68,6 +74,18 @@ export function ChatArea() {
       toast.error(t('errorOccurred'))
     },
   })
+
+  // Sync messages when conversation changes
+  // useChat's initialMessages only applies on mount, so we need to manually sync
+  React.useEffect(() => {
+    const newMessages =
+      conversation?.messages.map((m) => ({
+        id: m.id,
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+      })) ?? []
+    setMessages(newMessages)
+  }, [currentConversationId, setMessages]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
@@ -79,7 +97,13 @@ export function ChatArea() {
       return
     }
 
-    const convId = currentConversationId ?? createConversation()
+    // Create conversation first if needed, and update ref immediately
+    let convId = currentConversationId
+    if (!convId) {
+      convId = createConversation()
+    }
+    conversationIdRef.current = convId
+
     addMessage(convId, {
       role: 'user',
       content: inputValue,

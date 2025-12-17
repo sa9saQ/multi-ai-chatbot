@@ -90,7 +90,7 @@ Web Crypto APIを使用したAPIキー暗号化機能を実装する。
 - [ ] 6.1 (P) チャットストア作成（`hooks/use-chat-store.ts`: 会話管理、メッセージ追加、モデル切り替え）
 - [ ] 6.2 (P) 設定ストア作成（`hooks/use-settings-store.ts`: APIキー管理、言語/テーマ設定）
 - [ ] 6.3 (P) テンプレートストア作成（`hooks/use-templates-store.ts`: プリセット/カスタムテンプレート管理）
-- [ ] 6.4 ユーティリティフック作成（`hooks/use-local-storage.ts`, `hooks/use-mounted.ts`）
+- [x] 6.4 ユーティリティフック作成（`hooks/use-local-storage.ts`, `hooks/use-mounted.ts`）
 
 ---
 
