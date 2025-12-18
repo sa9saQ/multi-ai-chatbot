@@ -5,8 +5,13 @@ export interface ExportOptions {
   locale: 'ja' | 'en'
 }
 
-export function formatDate(date: Date, locale: 'ja' | 'en'): string {
-  return date.toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US', {
+// Convert date input to Date object (handles ISO strings from localStorage rehydration)
+function ensureDate(date: Date | string): Date {
+  return date instanceof Date ? date : new Date(date)
+}
+
+export function formatDate(date: Date | string, locale: 'ja' | 'en'): string {
+  return ensureDate(date).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -15,8 +20,8 @@ export function formatDate(date: Date, locale: 'ja' | 'en'): string {
   })
 }
 
-export function formatMessageTime(date: Date, locale: 'ja' | 'en'): string {
-  return date.toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', {
+export function formatMessageTime(date: Date | string, locale: 'ja' | 'en'): string {
+  return ensureDate(date).toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
   })

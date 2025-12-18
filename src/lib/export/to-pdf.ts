@@ -153,9 +153,14 @@ export function exportConversationAsPdf(
 
   // Use setTimeout to ensure content is rendered before printing
   // onload may not fire reliably after document.write() in some browsers
+  // 250ms provides more reliable timing across different browsers and devices
   setTimeout(() => {
-    if (printWindow && !printWindow.closed) {
-      printWindow.print()
+    try {
+      if (printWindow && !printWindow.closed) {
+        printWindow.print()
+      }
+    } catch {
+      // Print may fail if popup was closed or blocked, silently ignore
     }
-  }, 100)
+  }, 250)
 }

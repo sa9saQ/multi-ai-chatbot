@@ -24,11 +24,14 @@ export function ChatArea() {
     currentConversationId,
     selectedModelId,
     selectedProvider,
-    getCurrentConversation,
     addMessage,
     setIsGenerating,
     createConversation,
   } = useChatStore()
+  // Use Zustand selector to properly track conversation changes (including new messages)
+  const conversation = useChatStore((state) =>
+    state.conversations.find((c) => c.id === state.currentConversationId) ?? null
+  )
   const { getApiKey, hasApiKey } = useSettingsStore()
 
   const [apiKey, setApiKey] = React.useState<string | null>(null)
@@ -44,14 +47,6 @@ export function ChatArea() {
     }
     loadApiKey()
   }, [selectedProvider, getApiKey])
-
-  // Memoize to avoid recalculating on every render
-  // currentConversationId is needed to trigger recalculation when conversation changes
-  const conversation = React.useMemo(
-    () => getCurrentConversation(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentConversationId, getCurrentConversation]
-  )
 
   const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
@@ -92,7 +87,9 @@ export function ChatArea() {
   // We intentionally omit 'conversation' to avoid syncing on every message addition,
   // which would interfere with useChat's internal state during streaming
   React.useEffect(() => {
-    const conv = getCurrentConversation()
+    // Get fresh conversation state from store (not from reactive selector)
+    const { conversations, currentConversationId: convId } = useChatStore.getState()
+    const conv = conversations.find((c) => c.id === convId) ?? null
     const newMessages =
       conv?.messages
         .filter((m) => isSupportedRole(m.role))
@@ -102,7 +99,6 @@ export function ChatArea() {
           content: m.content,
         })) ?? []
     setMessages(newMessages)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentConversationId, setMessages])
 
   const isLoading = status === 'streaming' || status === 'submitted'
