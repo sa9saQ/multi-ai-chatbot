@@ -17,7 +17,8 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({ template, onSelect, onEdit, onDelete }: TemplateCardProps) {
-  const locale = useLocale() as 'ja' | 'en'
+  const rawLocale = useLocale()
+  const locale: 'ja' | 'en' = rawLocale === 'ja' || rawLocale === 'en' ? rawLocale : 'en'
   const t = useTranslations('template')
   const tCommon = useTranslations('common')
 

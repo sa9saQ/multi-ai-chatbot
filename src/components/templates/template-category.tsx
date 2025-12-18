@@ -30,7 +30,8 @@ export function TemplateCategory({
   onEditTemplate,
   onDeleteTemplate,
 }: TemplateCategoryProps) {
-  const locale = useLocale() as 'ja' | 'en'
+  const rawLocale = useLocale()
+  const locale: 'ja' | 'en' = rawLocale === 'ja' || rawLocale === 'en' ? rawLocale : 'en'
   const [isOpen, setIsOpen] = React.useState(defaultOpen)
 
   const categoryName = TEMPLATE_CATEGORIES[category].name[locale]
