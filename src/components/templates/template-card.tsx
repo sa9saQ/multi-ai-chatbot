@@ -68,7 +68,7 @@ export function TemplateCard({ template, onSelect, onEdit, onDelete }: TemplateC
           <p className="mt-1 truncate text-xs text-muted-foreground">{categoryName}</p>
         </div>
         {template.isCustom && (
-          <div className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
             <Button
               variant="ghost"
               size="icon"
