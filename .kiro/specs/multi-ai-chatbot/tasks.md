@@ -219,10 +219,10 @@ useChatフックを使用したチャット機能の統合を実装する。
 
 ### Sub-tasks
 
-- [ ] 15.1 テンプレートリストコンポーネント作成（`components/templates/template-list.tsx`）
-- [ ] 15.2 テンプレートカードコンポーネント作成（`components/templates/template-card.tsx`: 選択時入力フォーム挿入）
-- [ ] 15.3 カテゴリー表示コンポーネント作成（`components/templates/template-category.tsx`）
-- [ ] 15.4 テンプレートエディター作成（`components/templates/template-editor.tsx`: カスタムテンプレート作成・編集・削除）
+- [x] 15.1 テンプレートリストコンポーネント作成（`components/templates/template-list.tsx`）
+- [x] 15.2 テンプレートカードコンポーネント作成（`components/templates/template-card.tsx`: 選択時入力フォーム挿入）
+- [x] 15.3 カテゴリー表示コンポーネント作成（`components/templates/template-category.tsx`）
+- [x] 15.4 テンプレートエディター作成（`components/templates/template-editor.tsx`: カスタムテンプレート作成・編集・削除）
 
 ---
 

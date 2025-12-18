@@ -57,7 +57,11 @@
     "create": "テンプレート作成",
     "name": "テンプレート名",
     "prompt": "プロンプト",
-    "noCustom": "カスタムテンプレートがありません"
+    "noCustom": "カスタムテンプレートがありません",
+    "namePlaceholderJa": "コードレビュー",
+    "namePlaceholderEn": "Code Review",
+    "promptPlaceholderJa": "以下のコードをレビューしてください：",
+    "promptPlaceholderEn": "Please review the following code:"
   },
   "export": {
     "title": "エクスポート",
