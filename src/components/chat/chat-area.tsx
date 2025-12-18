@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { ModelSelector } from './model-selector'
 import { MessageList } from './message-list'
 import { ChatInput } from './chat-input'
+import { ExportMenu } from '@/components/export'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { useSettingsStore } from '@/hooks/use-settings-store'
 import type { Message, MessageRole } from '@/types/chat'
@@ -150,8 +151,9 @@ export function ChatArea() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b p-2">
+      <div className="flex items-center justify-between border-b p-2">
         <ModelSelector />
+        {conversation && <ExportMenu conversation={conversation} disabled={isLoading} />}
       </div>
 
       <MessageList messages={displayMessages} isLoading={isLoading} className="flex-1" />
