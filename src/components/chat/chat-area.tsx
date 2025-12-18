@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { ModelSelector } from './model-selector'
 import { MessageList } from './message-list'
 import { ChatInput } from './chat-input'
+import { ExportMenu } from '@/components/export'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { useSettingsStore } from '@/hooks/use-settings-store'
 import type { Message, MessageRole } from '@/types/chat'
@@ -23,11 +24,14 @@ export function ChatArea() {
     currentConversationId,
     selectedModelId,
     selectedProvider,
-    getCurrentConversation,
     addMessage,
     setIsGenerating,
     createConversation,
   } = useChatStore()
+  // Use Zustand selector to properly track conversation changes (including new messages)
+  const conversation = useChatStore((state) =>
+    state.conversations.find((c) => c.id === state.currentConversationId) ?? null
+  )
   const { getApiKey, hasApiKey } = useSettingsStore()
 
   const [apiKey, setApiKey] = React.useState<string | null>(null)
@@ -43,14 +47,6 @@ export function ChatArea() {
     }
     loadApiKey()
   }, [selectedProvider, getApiKey])
-
-  // Memoize to avoid recalculating on every render
-  // currentConversationId is needed to trigger recalculation when conversation changes
-  const conversation = React.useMemo(
-    () => getCurrentConversation(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentConversationId, getCurrentConversation]
-  )
 
   const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
@@ -91,7 +87,9 @@ export function ChatArea() {
   // We intentionally omit 'conversation' to avoid syncing on every message addition,
   // which would interfere with useChat's internal state during streaming
   React.useEffect(() => {
-    const conv = getCurrentConversation()
+    // Get fresh conversation state from store (not from reactive selector)
+    const { conversations, currentConversationId: convId } = useChatStore.getState()
+    const conv = conversations.find((c) => c.id === convId) ?? null
     const newMessages =
       conv?.messages
         .filter((m) => isSupportedRole(m.role))
@@ -101,7 +99,6 @@ export function ChatArea() {
           content: m.content,
         })) ?? []
     setMessages(newMessages)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentConversationId, setMessages])
 
   const isLoading = status === 'streaming' || status === 'submitted'
@@ -150,8 +147,9 @@ export function ChatArea() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b p-2">
+      <div className="flex items-center justify-between border-b p-2">
         <ModelSelector />
+        {conversation && <ExportMenu conversation={conversation} disabled={isLoading} />}
       </div>
 
       <MessageList messages={displayMessages} isLoading={isLoading} className="flex-1" />

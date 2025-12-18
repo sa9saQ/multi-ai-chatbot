@@ -234,10 +234,10 @@ useChatフックを使用したチャット機能の統合を実装する。
 
 ### Sub-tasks
 
-- [ ] 16.1 テキストエクスポート関数作成（`lib/export/to-text.ts`）
-- [ ] 16.2 Markdownエクスポート関数作成（`lib/export/to-markdown.ts`）
-- [ ] 16.3 PDFエクスポート関数作成（`lib/export/to-pdf.ts`: jspdf + html2canvas）
-- [ ] 16.4 エクスポートメニューコンポーネント作成（`components/export/export-menu.tsx`, `export-button.tsx`）
+- [x] 16.1 テキストエクスポート関数作成（`lib/export/to-text.ts`）
+- [x] 16.2 Markdownエクスポート関数作成（`lib/export/to-markdown.ts`）
+- [x] 16.3 PDFエクスポート関数作成（`lib/export/to-pdf.ts`: ブラウザ印刷API）
+- [x] 16.4 エクスポートメニューコンポーネント作成（`components/export/export-menu.tsx`）
 
 ---
 
