@@ -151,8 +151,11 @@ export function exportConversationAsPdf(
   printWindow.document.write(html)
   printWindow.document.close()
 
-  // Wait for content to load before printing
-  printWindow.onload = () => {
-    printWindow.print()
-  }
+  // Use setTimeout to ensure content is rendered before printing
+  // onload may not fire reliably after document.write() in some browsers
+  setTimeout(() => {
+    if (printWindow && !printWindow.closed) {
+      printWindow.print()
+    }
+  }, 100)
 }
