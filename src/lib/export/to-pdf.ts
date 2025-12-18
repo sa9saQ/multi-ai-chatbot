@@ -1,38 +1,15 @@
-import type { Conversation, Message } from '@/types/chat'
-import { AI_MODELS } from '@/types/ai'
+// client-only: This file uses browser APIs (document, window)
+// Only import from client components with 'use client' directive
 
-interface ExportOptions {
-  locale: 'ja' | 'en'
-}
-
-function formatDate(date: Date, locale: 'ja' | 'en'): string {
-  return date.toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatMessageTime(date: Date, locale: 'ja' | 'en'): string {
-  return date.toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function getRoleName(role: Message['role'], locale: 'ja' | 'en'): string {
-  if (locale === 'ja') {
-    return role === 'user' ? 'ユーザー' : 'AI'
-  }
-  return role === 'user' ? 'User' : 'AI'
-}
-
-function getModelName(modelId: string): string {
-  const model = AI_MODELS.find((m) => m.id === modelId)
-  return model?.name ?? modelId
-}
+import type { Conversation } from '@/types/chat'
+import {
+  type ExportOptions,
+  formatDate,
+  formatMessageTime,
+  getRoleName,
+  getModelName,
+  sanitizeFilename,
+} from './utils'
 
 function escapeHtml(text: string): string {
   const div = document.createElement('div')
@@ -162,8 +139,8 @@ export function exportConversationAsPdf(
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    const sanitizedTitle = conversation.title.replace(/[/\\?%*:|"<>]/g, '-')
-    link.download = `${sanitizedTitle}.html`
+    const filename = `${sanitizeFilename(conversation.title)}.html`
+    link.download = filename
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

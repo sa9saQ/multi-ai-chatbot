@@ -1,38 +1,13 @@
-import type { Conversation, Message } from '@/types/chat'
-import { AI_MODELS } from '@/types/ai'
-
-interface ExportOptions {
-  locale: 'ja' | 'en'
-}
-
-function formatDate(date: Date, locale: 'ja' | 'en'): string {
-  return date.toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatMessageTime(date: Date, locale: 'ja' | 'en'): string {
-  return date.toLocaleTimeString(locale === 'ja' ? 'ja-JP' : 'en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function getRoleName(role: Message['role'], locale: 'ja' | 'en'): string {
-  if (locale === 'ja') {
-    return role === 'user' ? 'ユーザー' : 'AI'
-  }
-  return role === 'user' ? 'User' : 'AI'
-}
-
-function getModelName(modelId: string): string {
-  const model = AI_MODELS.find((m) => m.id === modelId)
-  return model?.name ?? modelId
-}
+import type { Conversation } from '@/types/chat'
+import {
+  type ExportOptions,
+  formatDate,
+  formatMessageTime,
+  getRoleName,
+  getModelName,
+  sanitizeFilename,
+  downloadFile,
+} from './utils'
 
 export function conversationToMarkdown(
   conversation: Conversation,
@@ -71,7 +46,7 @@ export function conversationToMarkdown(
     const time = formatMessageTime(message.createdAt, locale)
     const emoji = message.role === 'user' ? '👤' : '🤖'
 
-    lines.push(`### ${emoji} ${roleName} <small>(${time})</small>`)
+    lines.push(`### ${emoji} ${roleName} _(${time})_`)
     lines.push('')
     lines.push(message.content)
     lines.push('')
@@ -81,15 +56,7 @@ export function conversationToMarkdown(
 }
 
 export function downloadMarkdown(content: string, filename: string): void {
-  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  downloadFile(content, filename, 'text/markdown')
 }
 
 export function exportConversationAsMarkdown(
@@ -97,7 +64,6 @@ export function exportConversationAsMarkdown(
   locale: 'ja' | 'en'
 ): void {
   const markdown = conversationToMarkdown(conversation, { locale })
-  const sanitizedTitle = conversation.title.replace(/[/\\?%*:|"<>]/g, '-')
-  const filename = `${sanitizedTitle}.md`
+  const filename = `${sanitizeFilename(conversation.title)}.md`
   downloadMarkdown(markdown, filename)
 }
