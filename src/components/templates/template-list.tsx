@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TemplateCategory } from './template-category'
+import { useShallow } from 'zustand/react/shallow'
 import { useTemplatesStore } from '@/hooks/use-templates-store'
 import type { Template, TemplateCategory as TemplateCategoryType } from '@/types/template'
 
@@ -26,9 +27,11 @@ export function TemplateList({
   onDeleteTemplate,
 }: TemplateListProps) {
   const t = useTranslations('template')
-  const { getAllTemplates, deleteCustomTemplate } = useTemplatesStore()
-
-  const templates = getAllTemplates()
+  const deleteCustomTemplate = useTemplatesStore((state) => state.deleteCustomTemplate)
+  // Use selector pattern with useShallow for stable reference
+  const templates = useTemplatesStore(
+    useShallow((state) => [...state.templates, ...state.customTemplates])
+  )
 
   // Group templates by category
   const templatesByCategory = React.useMemo(() => {

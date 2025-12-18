@@ -37,9 +37,8 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
 
   const isEditing = Boolean(template)
 
-  // Sync form state when template prop changes or dialog opens
+  // Sync form state when template prop changes
   React.useEffect(() => {
-    if (!open) return
     if (template) {
       setNameJa(template.name.ja)
       setNameEn(template.name.en)
@@ -51,7 +50,17 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
       setPromptJa('')
       setPromptEn('')
     }
-  }, [open, template])
+  }, [template])
+
+  // Reset form when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      setNameJa('')
+      setNameEn('')
+      setPromptJa('')
+      setPromptEn('')
+    }
+  }, [open])
 
   const isValid =
     nameJa.trim().length > 0 &&
