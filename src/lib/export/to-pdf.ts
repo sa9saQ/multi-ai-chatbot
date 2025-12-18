@@ -110,7 +110,7 @@ export function conversationToHtml(
         </div>
         <div class="meta-row">
           <span class="meta-label">${labels.model}:</span>
-          <span class="meta-value">${getModelName(conversation.modelId)}</span>
+          <span class="meta-value">${escapeHtml(getModelName(conversation.modelId))}</span>
         </div>
         <div class="meta-row">
           <span class="meta-label">${labels.messages}:</span>
