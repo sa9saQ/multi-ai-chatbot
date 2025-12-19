@@ -8,26 +8,20 @@ import { ChatArea } from '@/components/chat'
 
 export default function HomePage() {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false)
-  // TODO: Settings dialog will be implemented in Task 14
-  const [, setSettingsOpen] = React.useState(false)
 
   return (
     <div className="flex h-screen flex-col">
       <Header onMenuClick={() => setMobileNavOpen(true)} showMenuButton />
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar className="hidden md:flex" onSettingsClick={() => setSettingsOpen(true)} />
+        <Sidebar className="hidden md:flex" />
 
         <main className="flex flex-1 flex-col overflow-hidden">
           <ChatArea />
         </main>
       </div>
 
-      <MobileNav
-        open={mobileNavOpen}
-        onOpenChange={setMobileNavOpen}
-        onSettingsClick={() => setSettingsOpen(true)}
-      />
+      <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
     </div>
   )
 }
