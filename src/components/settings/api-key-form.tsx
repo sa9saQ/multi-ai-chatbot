@@ -14,8 +14,8 @@ const PROVIDERS: AIProvider[] = ['openai', 'anthropic', 'google']
 
 // Basic API key format validation
 const API_KEY_PATTERNS: Record<AIProvider, RegExp | null> = {
-  openai: /^sk-[a-zA-Z0-9-_]{20,}$/,
-  anthropic: /^sk-ant-[a-zA-Z0-9-_]{20,}$/,
+  openai: /^sk-[a-zA-Z0-9_-]{20,}$/,
+  anthropic: /^sk-ant-[a-zA-Z0-9_-]{20,}$/,
   google: null, // Google API keys have varied formats
 }
 
