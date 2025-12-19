@@ -31,10 +31,15 @@ export function ApiKeyForm() {
 
   const handleSave = React.useCallback(
     async (provider: keyof ProviderApiKeys, apiKey: string) => {
-      if (!validateApiKey(provider, apiKey)) {
+      // Trim and validate non-empty
+      const trimmedKey = apiKey.trim()
+      if (!trimmedKey) {
         throw new Error(t('invalidApiKeyFormat'))
       }
-      await setApiKey(provider, apiKey)
+      if (!validateApiKey(provider, trimmedKey)) {
+        throw new Error(t('invalidApiKeyFormat'))
+      }
+      await setApiKey(provider, trimmedKey)
     },
     [setApiKey, t]
   )

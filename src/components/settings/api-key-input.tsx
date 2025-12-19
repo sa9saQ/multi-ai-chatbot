@@ -47,7 +47,8 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
       setValue('')
       setShowKey(false)
       setSaveStatus('success')
-    } catch {
+    } catch (error) {
+      console.error('API key save failed:', error)
       setSaveStatus('error')
     } finally {
       setIsSaving(false)
@@ -105,6 +106,7 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
         disabled={!value.trim() || isSaving}
         size="sm"
         className="min-w-[80px]"
+        aria-busy={isSaving}
       >
         {isSaving ? (
           <span className="animate-pulse">...</span>
@@ -116,6 +118,13 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
           t('validate')
         )}
       </Button>
+
+      {/* Screen reader status announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {isSaving && t('validating')}
+        {saveStatus === 'success' && t('valid')}
+        {saveStatus === 'error' && t('invalid')}
+      </div>
 
       {hasExistingKey && (
         <Button

@@ -11,13 +11,14 @@ import { useMounted } from '@/hooks/use-mounted'
 export default function SettingsPage() {
   const locale = useLocale()
   const t = useTranslations('settings')
+  const tCommon = useTranslations('common')
   const mounted = useMounted()
 
   // Show loading state during hydration to prevent mismatch
   if (!mounted) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">{t('loading')}</div>
+        <div className="animate-pulse text-muted-foreground">{tCommon('loading')}</div>
       </div>
     )
   }

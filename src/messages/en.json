@@ -71,7 +71,6 @@
   },
   "settings": {
     "title": "Settings",
-    "loading": "Loading...",
     "back": "Back",
     "apiKeys": "API Keys",
     "apiKeyDescription": "Configure API keys for each AI provider.",
