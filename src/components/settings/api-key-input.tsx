@@ -48,7 +48,10 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
       setShowKey(false)
       setSaveStatus('success')
     } catch (error) {
-      console.error('API key save failed:', error)
+      // Log only error message to avoid leaking sensitive information
+      if (process.env.NODE_ENV === 'development') {
+        console.error('API key save failed:', error instanceof Error ? error.message : 'Unknown error')
+      }
       setSaveStatus('error')
     } finally {
       setIsSaving(false)
