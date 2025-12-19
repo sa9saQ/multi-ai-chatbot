@@ -249,10 +249,10 @@ APIキー設定とデフォルトモデル設定画面を実装する。
 
 ### Sub-tasks
 
-- [ ] 17.1 設定ページ作成（`app/[locale]/settings/page.tsx`）
-- [ ] 17.2 APIキー入力コンポーネント作成（`components/settings/api-key-input.tsx`: マスク表示）
-- [ ] 17.3 APIキーフォームコンポーネント作成（`components/settings/api-key-form.tsx`）
-- [ ] 17.4 デフォルトモデル選択コンポーネント作成（`components/settings/default-model-select.tsx`）
+- [x] 17.1 設定ページ作成（`app/[locale]/settings/page.tsx`）
+- [x] 17.2 APIキー入力コンポーネント作成（`components/settings/api-key-input.tsx`: マスク表示）
+- [x] 17.3 APIキーフォームコンポーネント作成（`components/settings/api-key-form.tsx`）
+- [x] 17.4 デフォルトモデル選択コンポーネント作成（`components/settings/default-model-select.tsx`）
 
 ---
 

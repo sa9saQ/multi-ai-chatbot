@@ -1,7 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { useTranslations } from 'next-intl'
+import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
 import { Plus, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -11,10 +12,10 @@ import { cn } from '@/lib/utils'
 
 interface SidebarProps {
   className?: string
-  onSettingsClick?: () => void
 }
 
-export function Sidebar({ className, onSettingsClick }: SidebarProps) {
+export function Sidebar({ className }: SidebarProps) {
+  const locale = useLocale()
   const t = useTranslations('sidebar')
   const {
     currentConversationId,
@@ -67,13 +68,11 @@ export function Sidebar({ className, onSettingsClick }: SidebarProps) {
       </ScrollArea>
 
       <div className="border-t p-2">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-2"
-          onClick={onSettingsClick}
-        >
-          <Settings className="h-4 w-4" />
-          {t('settings')}
+        <Button variant="ghost" className="w-full justify-start gap-2" asChild>
+          <Link href={`/${locale}/settings`}>
+            <Settings className="h-4 w-4" />
+            {t('settings')}
+          </Link>
         </Button>
       </div>
     </aside>
