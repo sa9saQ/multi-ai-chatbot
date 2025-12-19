@@ -20,7 +20,7 @@ const PROVIDER_ENDPOINTS: Record<AIProvider, { url: string; headers: (apiKey: st
     }),
   },
   google: {
-    url: 'https://generativelanguage.googleapis.com/v1/models',
+    url: 'https://generativelanguage.googleapis.com/v1beta/models',
     headers: (apiKey) => ({
       'x-goog-api-key': apiKey,
     }),
@@ -75,11 +75,19 @@ async function validateWithProvider(provider: AIProvider, apiKey: string): Promi
     }
 
     // Handle specific error codes
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       return { valid: false, error: 'invalid_key' }
     }
 
-    // Other errors (rate limit, server error, etc.)
+    if (response.status === 403) {
+      return { valid: false, error: 'access_forbidden' }
+    }
+
+    if (response.status === 429) {
+      return { valid: false, error: 'rate_limit_exceeded' }
+    }
+
+    // Other errors (server error, etc.)
     return { valid: false, error: 'validation_failed' }
   } catch (error) {
     clearTimeout(timeoutId)
@@ -95,11 +103,20 @@ async function validateWithProvider(provider: AIProvider, apiKey: string): Promi
 
 export async function POST(request: NextRequest): Promise<NextResponse<ValidateKeyResponse>> {
   try {
-    const body = await request.json() as ValidateKeyRequest
-    const { provider, apiKey } = body
+    const body = await request.json()
+
+    // Runtime type validation
+    if (typeof body !== 'object' || body === null) {
+      return NextResponse.json(
+        { valid: false, error: 'invalid_request' },
+        { status: 400 }
+      )
+    }
+
+    const { provider, apiKey } = body as Partial<ValidateKeyRequest>
 
     // Validate request body
-    if (!provider || !apiKey) {
+    if (!provider || !apiKey || typeof provider !== 'string' || typeof apiKey !== 'string') {
       return NextResponse.json(
         { valid: false, error: 'missing_parameters' },
         { status: 400 }

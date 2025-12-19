@@ -85,6 +85,8 @@
     "validating": "Saving...",
     "valid": "Saved",
     "invalid": "Save failed",
+    "validationTimeout": "Validation timed out",
+    "networkError": "Network error occurred",
     "provider": "Provider",
     "model": "Model",
     "defaultModel": "Default Model",

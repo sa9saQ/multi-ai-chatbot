@@ -85,6 +85,8 @@
     "validating": "保存中...",
     "valid": "保存完了",
     "invalid": "保存失敗",
+    "validationTimeout": "検証がタイムアウトしました",
+    "networkError": "ネットワークエラーが発生しました",
     "provider": "プロバイダー",
     "model": "モデル",
     "defaultModel": "デフォルトモデル",

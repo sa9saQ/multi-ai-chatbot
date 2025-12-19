@@ -40,17 +40,37 @@ export function ApiKeyForm() {
         throw new Error(t('invalidApiKeyFormat'))
       }
 
-      // Validate with provider API
-      const response = await fetch('/api/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey: trimmedKey }),
-      })
+      // Validate with provider API (with timeout)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 12000) // Slightly longer than server timeout
 
-      const result = await response.json() as { valid: boolean; error?: string }
+      try {
+        const response = await fetch('/api/validate-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, apiKey: trimmedKey }),
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
 
-      if (!result.valid) {
-        throw new Error(t('invalid'))
+        // Runtime response validation
+        const result = await response.json()
+        if (typeof result !== 'object' || result === null || typeof result.valid !== 'boolean') {
+          throw new Error(t('invalid'))
+        }
+
+        if (!result.valid) {
+          throw new Error(t('invalid'))
+        }
+      } catch (error) {
+        clearTimeout(timeoutId)
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error(t('validationTimeout'))
+        }
+        if (error instanceof Error) {
+          throw error
+        }
+        throw new Error(t('networkError'))
       }
 
       await setApiKey(provider, trimmedKey)
