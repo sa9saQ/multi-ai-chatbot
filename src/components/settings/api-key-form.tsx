@@ -39,6 +39,20 @@ export function ApiKeyForm() {
       if (!validateApiKey(provider, trimmedKey)) {
         throw new Error(t('invalidApiKeyFormat'))
       }
+
+      // Validate with provider API
+      const response = await fetch('/api/validate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey: trimmedKey }),
+      })
+
+      const result = await response.json() as { valid: boolean; error?: string }
+
+      if (!result.valid) {
+        throw new Error(t('invalid'))
+      }
+
       await setApiKey(provider, trimmedKey)
     },
     [setApiKey, t]
