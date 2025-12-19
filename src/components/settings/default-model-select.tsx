@@ -49,9 +49,9 @@ export function DefaultModelSelect() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>Provider</Label>
+          <Label htmlFor="default-provider">{t('provider')}</Label>
           <Select value={defaultProvider} onValueChange={handleProviderChange}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="default-provider" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -73,13 +73,13 @@ export function DefaultModelSelect() {
         </div>
 
         <div className="space-y-2">
-          <Label>Model</Label>
+          <Label htmlFor="default-model">{t('model')}</Label>
           <Select
             value={defaultModelId}
             onValueChange={handleModelChange}
             disabled={!isProviderConfigured}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger id="default-model" className="w-full">
               <SelectValue placeholder={tModel('select')} />
             </SelectTrigger>
             <SelectContent>

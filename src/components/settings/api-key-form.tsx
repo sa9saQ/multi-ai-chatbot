@@ -12,15 +12,31 @@ import type { ProviderApiKeys } from '@/types/settings'
 
 const PROVIDERS: AIProvider[] = ['openai', 'anthropic', 'google']
 
+// Basic API key format validation
+const API_KEY_PATTERNS: Record<AIProvider, RegExp | null> = {
+  openai: /^sk-[a-zA-Z0-9-_]{20,}$/,
+  anthropic: /^sk-ant-[a-zA-Z0-9-_]{20,}$/,
+  google: null, // Google API keys have varied formats
+}
+
+function validateApiKey(provider: AIProvider, apiKey: string): boolean {
+  const pattern = API_KEY_PATTERNS[provider]
+  if (!pattern) return true // Skip validation for providers without known patterns
+  return pattern.test(apiKey)
+}
+
 export function ApiKeyForm() {
   const t = useTranslations('settings')
   const { setApiKey, removeApiKey, hasApiKey } = useSettingsStore()
 
   const handleSave = React.useCallback(
     async (provider: keyof ProviderApiKeys, apiKey: string) => {
+      if (!validateApiKey(provider, apiKey)) {
+        throw new Error(t('invalidApiKeyFormat'))
+      }
       await setApiKey(provider, apiKey)
     },
-    [setApiKey]
+    [setApiKey, t]
   )
 
   const handleRemove = React.useCallback(
@@ -35,13 +51,13 @@ export function ApiKeyForm() {
       <CardHeader>
         <CardTitle>{t('apiKeys')}</CardTitle>
         <CardDescription>
-          {t('apiKeyPlaceholder')}
+          {t('apiKeyDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {PROVIDERS.map((provider) => (
           <div key={provider} className="space-y-2">
-            <Label htmlFor={`${provider}-api-key`} className="flex items-center gap-2">
+            <Label htmlFor={`api-key-${provider}`} className="flex items-center gap-2">
               <span>{AI_PROVIDERS[provider].icon}</span>
               <span>{AI_PROVIDERS[provider].name}</span>
             </Label>

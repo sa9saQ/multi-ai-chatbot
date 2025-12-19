@@ -9,15 +9,15 @@ import { ApiKeyForm, DefaultModelSelect } from '@/components/settings'
 import { useMounted } from '@/hooks/use-mounted'
 
 export default function SettingsPage() {
-  const t = useTranslations('settings')
   const locale = useLocale()
+  const t = useTranslations('settings')
   const mounted = useMounted()
 
   // Show loading state during hydration to prevent mismatch
   if (!mounted) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <div className="animate-pulse text-muted-foreground">{t('loading')}</div>
       </div>
     )
   }
@@ -28,7 +28,7 @@ export default function SettingsPage() {
         <Button variant="ghost" size="icon" asChild>
           <Link href={`/${locale}`}>
             <ArrowLeft className="h-5 w-5" />
-            <span className="sr-only">Back</span>
+            <span className="sr-only">{t('back')}</span>
           </Link>
         </Button>
         <h1 className="text-lg font-semibold">{t('title')}</h1>
