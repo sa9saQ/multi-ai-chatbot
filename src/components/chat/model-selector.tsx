@@ -70,6 +70,7 @@ export function ModelSelector() {
                     key={model.id}
                     disabled={!isConfigured}
                     onClick={() => handleSelect(model)}
+                    aria-current={model.id === selectedModelId ? 'true' : undefined}
                     className={cn(
                       'flex cursor-pointer items-center justify-between',
                       !isConfigured && 'opacity-50'

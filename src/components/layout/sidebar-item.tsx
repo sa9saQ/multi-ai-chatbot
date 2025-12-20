@@ -121,6 +121,8 @@ export function SidebarItem({
     <div
       role="button"
       tabIndex={0}
+      aria-current={isActive ? 'true' : undefined}
+      aria-label={`${conversation.title} - ${conversation.messageCount} ${t('messages')}`}
       onClick={onSelect}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -140,7 +142,7 @@ export function SidebarItem({
           {conversation.messageCount} {t('messages')}
         </p>
       </div>
-      <div className="flex opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="flex opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100">
         <Button
           variant="ghost"
           size="icon"
