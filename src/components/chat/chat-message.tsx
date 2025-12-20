@@ -70,7 +70,7 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
 
       <div
         className={cn(
-          'flex max-w-[80%] flex-col gap-1 rounded-lg px-4 py-2',
+          'flex max-w-[90%] flex-col gap-1 rounded-lg px-3 py-2 sm:max-w-[85%] sm:px-4 md:max-w-[75%] lg:max-w-[65%]',
           isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
         )}
       >

@@ -66,6 +66,7 @@ export function ChatInput({
         size="icon"
         disabled={disabled || !value.trim()}
         aria-label={t('send')}
+        className="h-11 w-11 shrink-0"
       >
         <Send className="h-4 w-4" />
       </Button>

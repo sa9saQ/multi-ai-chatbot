@@ -74,20 +74,20 @@ export function TemplateCard({ template, onSelect, onEdit, onDelete }: TemplateC
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-10 w-10 md:h-7 md:w-7"
               onClick={handleEdit}
               aria-label={tCommon('edit')}
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="h-4 w-4 md:h-3 md:w-3" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive"
+              className="h-10 w-10 text-destructive hover:text-destructive md:h-7 md:w-7"
               onClick={handleDelete}
               aria-label={tCommon('delete')}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4 md:h-3 md:w-3" />
             </Button>
           </div>
         )}

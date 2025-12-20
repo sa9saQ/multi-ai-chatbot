@@ -105,11 +105,11 @@ export function SidebarItem({
           maxLength={MAX_TITLE_LENGTH}
           aria-label={t('editTitle')}
         />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
+        <Button variant="ghost" size="icon" className="h-10 w-10 md:h-8 md:w-8" onClick={handleSave}>
           <Check className="h-4 w-4" />
           <span className="sr-only">{t('save')}</span>
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>
+        <Button variant="ghost" size="icon" className="h-10 w-10 md:h-8 md:w-8" onClick={handleCancel}>
           <X className="h-4 w-4" />
           <span className="sr-only">{t('cancel')}</span>
         </Button>
@@ -146,13 +146,13 @@ export function SidebarItem({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-10 w-10 md:h-7 md:w-7"
           onClick={(e) => {
             e.stopPropagation()
             setIsEditing(true)
           }}
         >
-          <Pencil className="h-3 w-3" />
+          <Pencil className="h-4 w-4 md:h-3 md:w-3" />
           <span className="sr-only">{t('editTitle')}</span>
         </Button>
         <AlertDialog>
@@ -160,10 +160,10 @@ export function SidebarItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive"
+              className="h-10 w-10 text-destructive hover:text-destructive md:h-7 md:w-7"
               onClick={(e) => e.stopPropagation()}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4 md:h-3 md:w-3" />
               <span className="sr-only">{t('deleteConversation')}</span>
             </Button>
           </AlertDialogTrigger>

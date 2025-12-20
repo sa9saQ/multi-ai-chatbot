@@ -14,7 +14,7 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-72 p-0">
+      <SheetContent side="left" className="w-[85vw] max-w-72 p-0">
         <SheetHeader className="border-b px-4 py-3">
           <SheetTitle>{t('appName')}</SheetTitle>
         </SheetHeader>
