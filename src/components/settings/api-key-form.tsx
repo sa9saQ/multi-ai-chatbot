@@ -9,21 +9,9 @@ import { useSettingsStore } from '@/hooks/use-settings-store'
 import { AI_PROVIDERS } from '@/types/ai'
 import type { AIProvider } from '@/types/ai'
 import type { ProviderApiKeys } from '@/types/settings'
+import { isValidApiKeyFormat } from '@/lib/api-key-validation'
 
 const PROVIDERS: AIProvider[] = ['openai', 'anthropic', 'google']
-
-// Basic API key format validation
-const API_KEY_PATTERNS: Record<AIProvider, RegExp | null> = {
-  openai: /^sk-[a-zA-Z0-9_-]{20,}$/,
-  anthropic: /^sk-ant-[a-zA-Z0-9_-]{20,}$/,
-  google: null, // Google API keys have varied formats
-}
-
-function validateApiKey(provider: AIProvider, apiKey: string): boolean {
-  const pattern = API_KEY_PATTERNS[provider]
-  if (!pattern) return true // Skip validation for providers without known patterns
-  return pattern.test(apiKey)
-}
 
 export function ApiKeyForm() {
   const t = useTranslations('settings')
@@ -36,7 +24,7 @@ export function ApiKeyForm() {
       if (!trimmedKey) {
         throw new Error(t('invalidApiKeyFormat'))
       }
-      if (!validateApiKey(provider, trimmedKey)) {
+      if (!isValidApiKeyFormat(provider, trimmedKey)) {
         throw new Error(t('invalidApiKeyFormat'))
       }
 
@@ -52,6 +40,11 @@ export function ApiKeyForm() {
           signal: controller.signal,
         })
         clearTimeout(timeoutId)
+
+        // Handle server errors (500+) before attempting to parse JSON
+        if (!response.ok && response.status >= 500) {
+          throw new Error(t('networkError'))
+        }
 
         // Runtime response validation
         const result = await response.json()

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { AIProvider } from '@/types/ai'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { isValidApiKeyFormat, isValidProvider } from '@/lib/api-key-validation'
 
 // Rate limit: 5 requests per minute per IP
 const RATE_LIMIT_CONFIG = {
@@ -42,23 +43,6 @@ interface ValidateKeyRequest {
 interface ValidateKeyResponse {
   valid: boolean
   error?: string
-}
-
-// Basic API key format validation (same as api-key-form.tsx)
-const API_KEY_PATTERNS: Record<AIProvider, RegExp | null> = {
-  openai: /^sk-[a-zA-Z0-9_-]{20,}$/,
-  anthropic: /^sk-ant-[a-zA-Z0-9_-]{20,}$/,
-  google: null, // Google API keys have varied formats
-}
-
-function isValidApiKeyFormat(provider: AIProvider, apiKey: string): boolean {
-  const pattern = API_KEY_PATTERNS[provider]
-  if (!pattern) return true // Skip validation for providers without known patterns
-  return pattern.test(apiKey)
-}
-
-function isValidProvider(provider: string): provider is AIProvider {
-  return ['openai', 'anthropic', 'google'].includes(provider)
 }
 
 async function validateWithProvider(provider: AIProvider, apiKey: string): Promise<ValidateKeyResponse> {
