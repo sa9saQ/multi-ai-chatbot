@@ -162,21 +162,27 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
       // Export button may be in a dropdown or visible directly
       const exportCount = await exportButton.count()
 
-      // If not directly visible, check for a menu that might contain export
-      if (exportCount === 0) {
-        // Look for a "more options" or similar menu
+      if (exportCount > 0) {
+        // Export button is directly visible
+        await expect(exportButton.first()).toBeVisible()
+      } else {
+        // Check for a "more options" menu that might contain export
         const moreButton = page.locator(
           'button[aria-label*="more" i], button[aria-label*="options" i]'
         )
-        if ((await moreButton.count()) > 0) {
+        const moreButtonCount = await moreButton.count()
+
+        if (moreButtonCount > 0) {
           await moreButton.first().click()
           const exportInMenu = page.locator(
             'text=/エクスポート|Export/i, [role="menuitem"]:has-text("Export")'
           )
-          expect(await exportInMenu.count()).toBeGreaterThanOrEqual(0)
+          // Must find export option in the menu
+          expect(await exportInMenu.count()).toBeGreaterThan(0)
+        } else {
+          // Neither direct export button nor menu found - fail the test
+          expect(exportCount + moreButtonCount).toBeGreaterThan(0)
         }
-      } else {
-        await expect(exportButton.first()).toBeVisible()
       }
     })
   })
