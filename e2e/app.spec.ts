@@ -41,10 +41,9 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
     test('FR-7.6: should toggle between dark and light mode', async ({
       page,
     }) => {
-      // Find theme toggle button by aria-label or icon
-      const themeButton = page
-        .locator('button[aria-label*="theme" i], button[aria-label*="mode" i]')
-        .first()
+      // Find theme toggle button using accessible name (from sr-only span)
+      // Matches both English "Theme" and Japanese "テーマ"
+      const themeButton = page.getByRole('button', { name: /theme|テーマ/i })
       await expect(themeButton).toBeVisible()
 
       const htmlBefore = await page.locator('html').getAttribute('class')
@@ -64,10 +63,11 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
       page,
     }) => {
       await page.setViewportSize({ width: 375, height: 667 })
-      // Mobile nav button (hamburger menu) should be visible
-      const mobileNavButton = page
-        .locator('button[aria-label*="menu" i], button[aria-label*="nav" i]')
-        .first()
+      // Mobile nav button using accessible name (from sr-only span)
+      // Matches both English "Open menu" and Japanese "メニューを開く"
+      const mobileNavButton = page.getByRole('button', {
+        name: /open menu|メニューを開く/i,
+      })
       await expect(mobileNavButton).toBeVisible()
     })
   })
@@ -116,15 +116,17 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
       expect(value).toContain('\n')
     })
 
-    test('FR-2.5: Enter should submit (clear textarea)', async ({ page }) => {
+    test('FR-2.5: Enter should trigger form submission', async ({ page }) => {
       const textarea = page.locator('textarea').first()
       await expect(textarea).toBeVisible()
 
       await textarea.fill('Test message')
       await textarea.press('Enter')
 
-      // Wait for textarea to be cleared using Playwright's auto-wait
-      await expect(textarea).toHaveValue('')
+      // Without API keys, form submission shows toast error
+      // Verify toast appears (indicating Enter triggered submission logic)
+      const toast = page.locator('[data-sonner-toast], [role="alert"]')
+      await expect(toast.first()).toBeVisible({ timeout: 3000 })
     })
   })
 
