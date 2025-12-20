@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { AIProvider } from '@/types/ai'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+
+// Rate limit: 5 requests per minute per IP
+const RATE_LIMIT_CONFIG = {
+  limit: 5,
+  windowMs: 60 * 1000, // 1 minute
+}
 
 // Validation timeout in milliseconds
 const VALIDATION_TIMEOUT = 10000
@@ -102,6 +109,25 @@ async function validateWithProvider(provider: AIProvider, apiKey: string): Promi
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ValidateKeyResponse>> {
+  // Check rate limit
+  const clientIp = getClientIp(request)
+  const rateLimitResult = checkRateLimit(`validate-key:${clientIp}`, RATE_LIMIT_CONFIG)
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { valid: false, error: 'rate_limit_exceeded' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)),
+          'X-RateLimit-Limit': String(RATE_LIMIT_CONFIG.limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(rateLimitResult.resetTime),
+        },
+      }
+    )
+  }
+
   try {
     const body = await request.json()
 

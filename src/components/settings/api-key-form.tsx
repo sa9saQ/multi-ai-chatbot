@@ -60,7 +60,24 @@ export function ApiKeyForm() {
         }
 
         if (!result.valid) {
-          throw new Error(t('invalid'))
+          // Map specific server error codes to user-friendly messages
+          const errorCode = typeof result.error === 'string' ? result.error : undefined
+          switch (errorCode) {
+            case 'timeout':
+              throw new Error(t('validationTimeout'))
+            case 'network_error':
+              throw new Error(t('networkError'))
+            case 'invalid_format':
+              throw new Error(t('invalidApiKeyFormat'))
+            case 'rate_limit_exceeded':
+              throw new Error(t('rateLimitExceeded'))
+            case 'access_forbidden':
+              throw new Error(t('accessForbidden'))
+            case 'invalid_key':
+              throw new Error(t('invalidKey'))
+            default:
+              throw new Error(t('invalid'))
+          }
         }
       } catch (error) {
         clearTimeout(timeoutId)
