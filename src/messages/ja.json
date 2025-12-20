@@ -67,7 +67,9 @@
     "title": "エクスポート",
     "text": "テキスト (.txt)",
     "markdown": "Markdown (.md)",
-    "pdf": "PDF (.pdf)"
+    "pdf": "PDF (.pdf)",
+    "error": "エクスポートに失敗しました",
+    "exporting": "エクスポート中..."
   },
   "settings": {
     "title": "設定",
