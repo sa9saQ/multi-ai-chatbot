@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useSettingsStore } from '@/hooks/use-settings-store'
-import { AI_PROVIDERS, AI_MODELS, getModelsByProvider } from '@/types/ai'
+import { AI_PROVIDERS, getModelsByProvider } from '@/types/ai'
 import type { AIProvider } from '@/types/ai'
 
 const PROVIDERS: AIProvider[] = ['openai', 'anthropic', 'google']
