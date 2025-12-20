@@ -9,21 +9,9 @@ import { useSettingsStore } from '@/hooks/use-settings-store'
 import { AI_PROVIDERS } from '@/types/ai'
 import type { AIProvider } from '@/types/ai'
 import type { ProviderApiKeys } from '@/types/settings'
+import { isValidApiKeyFormat } from '@/lib/api-key-validation'
 
 const PROVIDERS: AIProvider[] = ['openai', 'anthropic', 'google']
-
-// Basic API key format validation
-const API_KEY_PATTERNS: Record<AIProvider, RegExp | null> = {
-  openai: /^sk-[a-zA-Z0-9_-]{20,}$/,
-  anthropic: /^sk-ant-[a-zA-Z0-9_-]{20,}$/,
-  google: null, // Google API keys have varied formats
-}
-
-function validateApiKey(provider: AIProvider, apiKey: string): boolean {
-  const pattern = API_KEY_PATTERNS[provider]
-  if (!pattern) return true // Skip validation for providers without known patterns
-  return pattern.test(apiKey)
-}
 
 export function ApiKeyForm() {
   const t = useTranslations('settings')
@@ -36,9 +24,75 @@ export function ApiKeyForm() {
       if (!trimmedKey) {
         throw new Error(t('invalidApiKeyFormat'))
       }
-      if (!validateApiKey(provider, trimmedKey)) {
+      if (!isValidApiKeyFormat(provider, trimmedKey)) {
         throw new Error(t('invalidApiKeyFormat'))
       }
+
+      // Validate with provider API (with timeout)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 12000) // Slightly longer than server timeout
+
+      try {
+        const response = await fetch('/api/validate-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, apiKey: trimmedKey }),
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+
+        // Handle server errors (500+) before attempting to parse JSON
+        if (!response.ok && response.status >= 500) {
+          throw new Error(t('networkError'))
+        }
+
+        // Runtime response validation
+        const result = await response.json()
+        if (typeof result !== 'object' || result === null || typeof result.valid !== 'boolean') {
+          throw new Error(t('invalid'))
+        }
+
+        if (!result.valid) {
+          // Map specific server error codes to user-friendly messages
+          const errorCode = typeof result.error === 'string' ? result.error : undefined
+          switch (errorCode) {
+            case 'timeout':
+              throw new Error(t('validationTimeout'))
+            case 'network_error':
+              throw new Error(t('networkError'))
+            case 'invalid_format':
+              throw new Error(t('invalidApiKeyFormat'))
+            case 'rate_limit_exceeded':
+              throw new Error(t('rateLimitExceeded'))
+            case 'access_forbidden':
+              throw new Error(t('accessForbidden'))
+            case 'invalid_key':
+              throw new Error(t('invalidKey'))
+            default:
+              throw new Error(t('invalid'))
+          }
+        }
+      } catch (error) {
+        clearTimeout(timeoutId)
+        if (error instanceof Error) {
+          // AbortError: client-side timeout
+          if (error.name === 'AbortError') {
+            throw new Error(t('validationTimeout'))
+          }
+          // TypeError: network failure (e.g., no internet connection)
+          if (error.name === 'TypeError') {
+            throw new Error(t('networkError'))
+          }
+          // SyntaxError: JSON parse failure (unexpected response format)
+          if (error.name === 'SyntaxError') {
+            throw new Error(t('networkError'))
+          }
+          // Re-throw our own translated errors (from switch cases above)
+          throw error
+        }
+        throw new Error(t('networkError'))
+      }
+
       await setApiKey(provider, trimmedKey)
     },
     [setApiKey, t]
