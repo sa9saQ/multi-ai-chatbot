@@ -10,11 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  exportConversationAsText,
-  exportConversationAsMarkdown,
-  exportConversationAsPdf,
-} from '@/lib/export'
+// Dynamic import for code splitting - export functions only loaded when needed
 import type { Conversation } from '@/types/chat'
 
 interface ExportMenuProps {
@@ -27,15 +23,18 @@ export function ExportMenu({ conversation, disabled }: ExportMenuProps) {
   const rawLocale = useLocale()
   const locale: 'ja' | 'en' = rawLocale === 'ja' || rawLocale === 'en' ? rawLocale : 'en'
 
-  const handleExportText = () => {
+  const handleExportText = async () => {
+    const { exportConversationAsText } = await import('@/lib/export')
     exportConversationAsText(conversation, locale)
   }
 
-  const handleExportMarkdown = () => {
+  const handleExportMarkdown = async () => {
+    const { exportConversationAsMarkdown } = await import('@/lib/export')
     exportConversationAsMarkdown(conversation, locale)
   }
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
+    const { exportConversationAsPdf } = await import('@/lib/export')
     exportConversationAsPdf(conversation, locale)
   }
 
