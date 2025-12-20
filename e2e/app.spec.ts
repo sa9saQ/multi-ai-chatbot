@@ -49,8 +49,11 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
 
       const htmlBefore = await page.locator('html').getAttribute('class')
       await themeButton.click()
-      // Wait for theme change
-      await page.waitForTimeout(300)
+      // Wait for class attribute to change using Playwright's auto-wait
+      await expect(page.locator('html')).not.toHaveAttribute(
+        'class',
+        htmlBefore || ''
+      )
       const htmlAfter = await page.locator('html').getAttribute('class')
 
       // Theme class should change (dark <-> light)
@@ -120,12 +123,8 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
       await textarea.fill('Test message')
       await textarea.press('Enter')
 
-      // Wait for form submission processing
-      await page.waitForTimeout(200)
-
-      // Textarea should be cleared after submission
-      const valueAfterSend = await textarea.inputValue()
-      expect(valueAfterSend).toBe('')
+      // Wait for textarea to be cleared using Playwright's auto-wait
+      await expect(textarea).toHaveValue('')
     })
   })
 
