@@ -75,6 +75,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
               <DropdownMenuItem
                 key={loc}
                 onClick={() => handleLocaleChange(loc)}
+                aria-current={locale === loc ? 'true' : undefined}
                 className={locale === loc ? 'bg-accent' : ''}
               >
                 {t(LOCALE_LABEL_KEYS[loc])}
@@ -93,6 +94,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               onClick={() => setTheme('light')}
+              aria-current={theme === 'light' ? 'true' : undefined}
               className={theme === 'light' ? 'bg-accent' : ''}
             >
               <Sun className="mr-2 h-4 w-4" />
@@ -100,6 +102,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setTheme('dark')}
+              aria-current={theme === 'dark' ? 'true' : undefined}
               className={theme === 'dark' ? 'bg-accent' : ''}
             >
               <Moon className="mr-2 h-4 w-4" />
@@ -107,6 +110,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setTheme('system')}
+              aria-current={theme === 'system' ? 'true' : undefined}
               className={theme === 'system' ? 'bg-accent' : ''}
             >
               <Monitor className="mr-2 h-4 w-4" />

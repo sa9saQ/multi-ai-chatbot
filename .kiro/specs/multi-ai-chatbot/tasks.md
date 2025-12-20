@@ -278,9 +278,9 @@ APIキーの有効性を検証するAPIエンドポイントを実装する。
 
 ### Sub-tasks
 
-- [ ] 19.1 全インタラクティブ要素のキーボード操作確認・修正
-- [ ] 19.2 ARIA属性の追加と検証（role, aria-label, aria-current等）
-- [ ] 19.3 コントラスト比の検証と調整（WCAG 2.1 Level AA準拠）
+- [x] 19.1 全インタラクティブ要素のキーボード操作確認・修正
+- [x] 19.2 ARIA属性の追加と検証（role, aria-label, aria-current等）
+- [x] 19.3 コントラスト比の検証と調整（WCAG 2.1 Level AA準拠）
 
 ---
 
