@@ -155,8 +155,9 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
       page,
     }) => {
       // Look for export button/menu in various locations
+      // Include both English and Japanese aria-labels for i18n support
       const exportButton = page.locator(
-        'button:has-text("エクスポート"), button:has-text("Export"), button[aria-label*="export" i], [data-testid="export"]'
+        'button:has-text("エクスポート"), button:has-text("Export"), button[aria-label*="export" i], button[aria-label="エクスポート"], button[aria-label="エクスポート中..."], [data-testid="export"]'
       )
 
       // Export button may be in a dropdown or visible directly
