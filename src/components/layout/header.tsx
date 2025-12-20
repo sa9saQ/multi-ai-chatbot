@@ -54,7 +54,7 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
     <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-2">
         {showMenuButton && (
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
+          <Button variant="ghost" size="icon" className="h-11 w-11 md:hidden" onClick={onMenuClick}>
             <Menu className="h-5 w-5" />
             <span className="sr-only">{t('openMenu')}</span>
           </Button>

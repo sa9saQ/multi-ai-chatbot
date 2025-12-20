@@ -47,7 +47,7 @@ export function ModelSelector() {
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64">
+      <DropdownMenuContent className="max-w-[90vw] md:w-64">
         {providers.map((provider, index) => {
           const models = getModelsByProvider(provider)
           const isConfigured = hasApiKey(provider)
