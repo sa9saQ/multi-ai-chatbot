@@ -74,10 +74,20 @@ export function ApiKeyForm() {
         }
       } catch (error) {
         clearTimeout(timeoutId)
-        if (error instanceof Error && error.name === 'AbortError') {
-          throw new Error(t('validationTimeout'))
-        }
         if (error instanceof Error) {
+          // AbortError: client-side timeout
+          if (error.name === 'AbortError') {
+            throw new Error(t('validationTimeout'))
+          }
+          // TypeError: network failure (e.g., no internet connection)
+          if (error.name === 'TypeError') {
+            throw new Error(t('networkError'))
+          }
+          // SyntaxError: JSON parse failure (unexpected response format)
+          if (error.name === 'SyntaxError') {
+            throw new Error(t('networkError'))
+          }
+          // Re-throw our own translated errors (from switch cases above)
           throw error
         }
         throw new Error(t('networkError'))

@@ -21,6 +21,7 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
   const [showKey, setShowKey] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
   // Reset visibility when leaving the page (security)
   React.useEffect(() => {
@@ -42,16 +43,19 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
 
     setIsSaving(true)
     setSaveStatus('idle')
+    setErrorMessage(null)
     try {
       await onSave(value.trim())
       setValue('')
       setShowKey(false)
       setSaveStatus('success')
     } catch (error) {
+      const message = error instanceof Error ? error.message : t('invalid')
       // Log only error message to avoid leaking sensitive information
       if (process.env.NODE_ENV === 'development') {
-        console.error('API key save failed:', error instanceof Error ? error.message : 'Unknown error')
+        console.error('API key save failed:', message)
       }
+      setErrorMessage(message)
       setSaveStatus('error')
     } finally {
       setIsSaving(false)
@@ -63,6 +67,7 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
     setValue('')
     setShowKey(false)
     setSaveStatus('idle')
+    setErrorMessage(null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -110,6 +115,7 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
         size="sm"
         className="min-w-[80px]"
         aria-busy={isSaving}
+        title={saveStatus === 'error' && errorMessage ? errorMessage : undefined}
       >
         {isSaving ? (
           <span className="animate-pulse">...</span>
@@ -122,11 +128,18 @@ export function ApiKeyInput({ provider, hasExistingKey, onSave, onRemove }: ApiK
         )}
       </Button>
 
+      {/* Error message display */}
+      {saveStatus === 'error' && errorMessage && (
+        <span className="text-sm text-destructive whitespace-nowrap" role="alert">
+          {errorMessage}
+        </span>
+      )}
+
       {/* Screen reader status announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {isSaving && t('validating')}
         {saveStatus === 'success' && t('valid')}
-        {saveStatus === 'error' && t('invalid')}
+        {saveStatus === 'error' && (errorMessage ?? t('invalid'))}
       </div>
 
       {hasExistingKey && (
