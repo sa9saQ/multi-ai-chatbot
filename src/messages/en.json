@@ -67,7 +67,9 @@
     "title": "Export",
     "text": "Text (.txt)",
     "markdown": "Markdown (.md)",
-    "pdf": "PDF (.pdf)"
+    "pdf": "PDF (.pdf)",
+    "error": "Export failed",
+    "exporting": "Exporting..."
   },
   "settings": {
     "title": "Settings",
