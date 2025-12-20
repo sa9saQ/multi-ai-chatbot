@@ -10,8 +10,13 @@ import type { AIProvider } from '@/types/ai'
  * null means no format validation (varied formats)
  */
 export const API_KEY_PATTERNS: Record<AIProvider, RegExp | null> = {
-  // OpenAI supports: sk-xxx (legacy), sk-proj-xxx (project), sk-admin-xxx (admin)
-  openai: /^sk-(?:proj-|admin-)?[a-zA-Z0-9_-]{20,}$/,
+  // OpenAI supports multiple prefixes:
+  // - sk-xxx (legacy)
+  // - sk-proj-xxx (project keys)
+  // - sk-admin-xxx (admin keys)
+  // - sk-None-xxx (user keys, non-project)
+  // - sk-svcacct-xxx (service account keys)
+  openai: /^sk-(?:proj-|admin-|None-|svcacct-)?[a-zA-Z0-9_-]{20,}$/,
   anthropic: /^sk-ant-[a-zA-Z0-9_-]{20,}$/,
   google: null, // Google API keys have varied formats
 }
