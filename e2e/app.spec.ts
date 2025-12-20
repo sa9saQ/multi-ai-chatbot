@@ -154,10 +154,9 @@ test.describe('Multi-AI Chatbot E2E Tests', () => {
     test('FR-4.5: should have export menu or button in header/toolbar', async ({
       page,
     }) => {
-      // Look for export button/menu in various locations
-      // Include both English and Japanese aria-labels for i18n support
+      // Look for export button using consistent partial matching for i18n
       const exportButton = page.locator(
-        'button:has-text("エクスポート"), button:has-text("Export"), button[aria-label*="export" i], button[aria-label="エクスポート"], button[aria-label="エクスポート中..."], [data-testid="export"]'
+        '[data-testid="export"], button[aria-label*="export" i], button[aria-label*="エクスポート"]'
       )
 
       // Export button may be in a dropdown or visible directly
