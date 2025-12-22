@@ -136,13 +136,25 @@ export async function POST(req: Request) {
         } as CoreMessage
       }
 
-      // Already multimodal content - sanitize text parts
-      const sanitizedContent = message.content.map((part) => {
-        if (part.type === 'text') {
-          return { ...part, text: sanitizeInput(part.text) }
-        }
-        return part
-      })
+      // Already multimodal content - sanitize text parts and validate image parts
+      const sanitizedContent = message.content
+        .map((part) => {
+          if (part.type === 'text') {
+            return { ...part, text: sanitizeInput(part.text) }
+          }
+          // Validate image parts with same rules as attachments
+          if (part.type === 'image') {
+            if (!isValidImageDataUrl(part.image)) {
+              return null // Skip invalid data URLs
+            }
+            const actualMimeType = getDataUrlMimeType(part.image)
+            if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
+              return null // Skip disallowed MIME types
+            }
+          }
+          return part
+        })
+        .filter((part): part is ContentPart => part !== null)
       return {
         role: message.role,
         content: sanitizedContent,

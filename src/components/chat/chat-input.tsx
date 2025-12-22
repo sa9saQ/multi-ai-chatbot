@@ -135,7 +135,7 @@ export function ChatInput({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/gif,image/webp"
               multiple
               onChange={handleFileSelect}
               disabled={disabled || !canAddImages}

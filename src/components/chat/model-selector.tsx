@@ -44,11 +44,13 @@ export function ModelSelector() {
   const getModelTranslation = (modelId: string) => {
     // Convert model ID to translation key (next-intl keys cannot contain '.')
     const translationKey = modelId.replace(/\./g, '_')
-    try {
-      const description = t(`models.${translationKey}.description`)
-      const strengths = t.raw(`models.${translationKey}.strengths`) as string[]
-      return { description, strengths }
-    } catch {
+    const descriptionKey = `models.${translationKey}.description`
+    const strengthsKey = `models.${translationKey}.strengths`
+
+    const description = t(descriptionKey)
+    // t() returns the key path when translation is missing (doesn't throw)
+    // Check if returned value equals key path to detect missing translation
+    if (description === descriptionKey) {
       // Fallback to model's default values if translation not found
       const model = AI_MODELS.find((m) => m.id === modelId)
       return {
@@ -56,6 +58,9 @@ export function ModelSelector() {
         strengths: model?.strengths ?? [],
       }
     }
+
+    const strengths = t.raw(strengthsKey) as string[]
+    return { description, strengths }
   }
 
   const providers: AIProvider[] = ['openai', 'anthropic', 'google']
