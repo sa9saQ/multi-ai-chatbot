@@ -105,7 +105,7 @@ export function ChatArea() {
       setIsGenerating(false)
       pendingContextRef.current = null
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(errorMessage || t('errorOccurred'))
+      toast.error(errorMessage || t('errorOccurred'), { id: 'chat-error' })
     },
   })
 
@@ -206,7 +206,7 @@ export function ChatArea() {
       pendingContextRef.current = null
       setIsGenerating(false)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      toast.error(errorMessage || t('errorOccurred'))
+      toast.error(errorMessage || t('errorOccurred'), { id: 'chat-error' })
     }
   }
 

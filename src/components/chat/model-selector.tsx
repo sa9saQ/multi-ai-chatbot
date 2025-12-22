@@ -141,6 +141,11 @@ export function ModelSelector() {
                             {strength}
                           </Badge>
                         ))}
+                        {strengths.length > 3 && (
+                          <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                            +{strengths.length - 3}
+                          </Badge>
+                        )}
                       </div>
                     </button>
                   )
