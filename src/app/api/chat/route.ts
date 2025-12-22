@@ -60,8 +60,42 @@ function isDataUrlWithinSizeLimit(url: string): boolean {
   return estimatedSize <= MAX_IMAGE_SIZE_BYTES
 }
 
+// Allowed message roles (system role is NOT allowed from client to prevent prompt injection)
+const ALLOWED_ROLES = ['user', 'assistant'] as const
+type AllowedRole = typeof ALLOWED_ROLES[number]
+
+// Type guard for allowed roles
+function isAllowedRole(role: unknown): role is AllowedRole {
+  return typeof role === 'string' && ALLOWED_ROLES.includes(role as AllowedRole)
+}
+
+// Type guard for valid content part
+function isValidContentPart(part: unknown): part is ContentPart {
+  if (typeof part !== 'object' || part === null) return false
+  const p = part as Record<string, unknown>
+  if (p.type === 'text' && typeof p.text === 'string') return true
+  if (p.type === 'image' && typeof p.image === 'string') return true
+  return false
+}
+
+// Validate message structure
+function isValidMessage(msg: unknown): msg is ChatMessage {
+  if (typeof msg !== 'object' || msg === null) return false
+  const m = msg as Record<string, unknown>
+  
+  // Role must be allowed (user or assistant only)
+  if (!isAllowedRole(m.role)) return false
+  
+  // Content must be string or array of valid parts
+  if (typeof m.content === 'string') return true
+  if (Array.isArray(m.content)) {
+    return m.content.every(isValidContentPart)
+  }
+  return false
+}
+
 interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
+  role: AllowedRole
   content: string | ContentPart[]
   experimental_attachments?: Attachment[]
 }
@@ -113,6 +147,26 @@ export async function POST(req: Request) {
       })
     }
 
+    // Validate message structure and filter out system role (prevent prompt injection)
+    // This is a critical security check - system role from client could manipulate AI behavior
+    const validatedMessages: ChatMessage[] = []
+    for (const msg of messages) {
+      if (!isValidMessage(msg)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid message format: each message must have a valid role (user/assistant) and content (string or content parts array)' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      validatedMessages.push(msg)
+    }
+
+    if (validatedMessages.length === 0) {
+      return new Response(JSON.stringify({ error: 'No valid messages provided' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     if (!modelId || !provider) {
       return new Response(JSON.stringify({ error: 'Model ID and provider are required' }), {
         status: 400,
@@ -138,7 +192,7 @@ export async function POST(req: Request) {
     }
 
     // Check for prompt injection attempts in user messages (text content only)
-    const userMessages = messages.filter((m) => m.role === 'user')
+    const userMessages = validatedMessages.filter((m) => m.role === 'user')
     for (const message of userMessages) {
       const textContent = typeof message.content === 'string'
         ? message.content
@@ -153,7 +207,7 @@ export async function POST(req: Request) {
     }
 
     // Process messages to handle multimodal content (experimental_attachments)
-    const processedMessages: CoreMessage[] = messages.map((message) => {
+    const processedMessages: CoreMessage[] = validatedMessages.map((message) => {
       const hasMessageAttachments = message.experimental_attachments && message.experimental_attachments.length > 0
 
       // If message has attachments, create multimodal content

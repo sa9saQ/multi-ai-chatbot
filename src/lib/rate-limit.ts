@@ -1,6 +1,17 @@
 /**
  * Simple in-memory rate limiter for API endpoints
- * For production, consider using Redis-based solutions like @upstash/ratelimit
+ * 
+ * LIMITATIONS:
+ * - In-memory storage: Rate limits are not shared across serverless function
+ *   instances or during cold starts. This is acceptable for portfolio projects
+ *   but production apps should use Redis-based solutions like @upstash/ratelimit.
+ * - Header trust: IP extraction prioritizes trusted platform headers (Vercel, 
+ *   Cloudflare) but x-forwarded-for can be spoofed in some configurations.
+ * 
+ * For production, consider:
+ * - @upstash/ratelimit with Redis
+ * - Vercel's Edge Config rate limiting
+ * - Cloudflare Rate Limiting at the edge
  */
 
 interface RateLimitEntry {
@@ -88,28 +99,45 @@ export function checkRateLimit(
 
 /**
  * Get client IP from request headers
- * Handles various proxy scenarios
+ * 
+ * SECURITY NOTE: Header spoofing is possible for untrusted proxies.
+ * This implementation prioritizes headers set by trusted platforms:
+ * 1. Vercel's x-vercel-forwarded-for (set by Vercel's edge, cannot be spoofed)
+ * 2. Cloudflare's cf-connecting-ip (set by Cloudflare, cannot be spoofed)
+ * 3. x-real-ip (commonly set by reverse proxies)
+ * 4. x-forwarded-for (can be spoofed if not behind trusted proxy)
+ * 
+ * For production with strict security requirements, consider:
+ * - Using Redis-based rate limiting with proper IP extraction
+ * - Vercel's built-in rate limiting features
+ * - Cloudflare's rate limiting at the edge
  */
 export function getClientIp(request: Request): string {
-  // Vercel/Cloudflare headers
-  const forwardedFor = request.headers.get('x-forwarded-for')
-  if (forwardedFor) {
-    // Take the first IP (client IP)
-    return forwardedFor.split(',')[0].trim()
+  // Priority 1: Vercel's trusted header (set by Vercel edge, not spoofable)
+  const vercelIp = request.headers.get('x-vercel-forwarded-for')
+  if (vercelIp) {
+    return vercelIp.split(',')[0].trim()
   }
 
-  // Cloudflare
+  // Priority 2: Cloudflare's trusted header (set by Cloudflare edge, not spoofable)
   const cfConnectingIp = request.headers.get('cf-connecting-ip')
   if (cfConnectingIp) {
     return cfConnectingIp
   }
 
-  // Vercel
+  // Priority 3: x-real-ip (commonly set by reverse proxies like nginx)
   const realIp = request.headers.get('x-real-ip')
   if (realIp) {
     return realIp
   }
 
-  // Fallback
+  // Priority 4: x-forwarded-for (can be spoofed, lowest priority)
+  // Note: This is only reliable when behind a trusted proxy that overwrites it
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0].trim()
+  }
+
+  // Fallback for local development
   return '127.0.0.1'
 }

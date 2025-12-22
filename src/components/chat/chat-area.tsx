@@ -153,20 +153,21 @@ export function ChatArea() {
     const userMessage = inputValue
     const imagesToSend = [...attachedImages]
 
-    // Save user message to store
+    // Determine the actual message content to send to API
+    // Use the same content for both saving and sending to ensure consistency
+    const messageContent = imagesToSend.length > 0
+      ? (userMessage.trim() || t('describeImage'))
+      : userMessage
+
+    // Save user message to store (same content as sent to API for consistency)
     addMessage(convId, {
       role: 'user',
-      content: userMessage || (imagesToSend.length > 0 ? t('imageSent') : ''),
+      content: messageContent || (imagesToSend.length > 0 ? t('describeImage') : ''),
     })
 
     // Clear inputs
     setInputValue('')
     setAttachedImages(prev => prev.length > 0 ? [] : prev)
-
-    // Send message
-    const messageContent = imagesToSend.length > 0
-      ? (userMessage.trim() || t('describeImage'))
-      : userMessage
 
     // Convert images to experimental_attachments format
     const attachments = imagesToSend.map((base64, index) => {
