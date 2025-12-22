@@ -60,6 +60,10 @@ export function ChatArea() {
     loadApiKey()
   }, [selectedProvider, getApiKey])
 
+  // Store request context for onFinish callback (only one active request at a time due to isLoading guard)
+  // This ref is set before calling append() and read in onFinish to save the message to the correct conversation
+  const pendingContextRef = React.useRef<{ convId: string; modelId: string } | null>(null)
+
   const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
     // Default body (can be overridden in append)
@@ -76,20 +80,27 @@ export function ChatArea() {
         role: m.role,
         content: m.content,
       })) ?? [],
-    // Note: onFinish/onResponse removed - logic moved to handleSubmit with await
-    // to properly capture per-request context in closures (fixes race condition)
+    onFinish: (message) => {
+      setIsGenerating(false)
+      // Use pendingContextRef to get the context captured at submit time
+      // This avoids stale closure issues since onFinish is called with the correct message
+      const context = pendingContextRef.current
+      if (context) {
+        addMessage(context.convId, {
+          role: 'assistant',
+          content: message.content,
+          modelId: context.modelId,
+        })
+        pendingContextRef.current = null
+      }
+    },
     onError: (error) => {
       setIsGenerating(false)
+      pendingContextRef.current = null
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(errorMessage || t('errorOccurred'))
     },
   })
-
-  // Track latest messages in ref for reading after await append()
-  const messagesRef = React.useRef(messages)
-  React.useEffect(() => {
-    messagesRef.current = messages
-  }, [messages])
 
   // Sync messages when switching conversations OR when model changes (due to id change in useChat)
   React.useEffect(() => {
@@ -125,21 +136,18 @@ export function ChatArea() {
       return
     }
 
-    // Capture values at submit time as local const variables (not refs)
-    // This ensures each request has its own closure-captured context that can't be overwritten
-    // by subsequent requests, fixing the race condition when switching conversations
-    let convIdAtSubmit = currentConversationId
-    if (!convIdAtSubmit) {
-      convIdAtSubmit = createConversation()
+    // Create conversation if needed
+    let convId = currentConversationId
+    if (!convId) {
+      convId = createConversation()
     }
-    const modelIdAtSubmit = selectedModelId
 
     // Build message content - capture images before clearing state
     const userMessage = inputValue
     const imagesToSend = [...attachedImages]
 
-    // Save to store (text only for now)
-    addMessage(convIdAtSubmit, {
+    // Save user message to store
+    addMessage(convId, {
       role: 'user',
       content: userMessage || (imagesToSend.length > 0 ? t('imageSent') : ''),
     })
@@ -164,12 +172,12 @@ export function ChatArea() {
       }
     })
 
-    try {
-      setIsGenerating(true)
+    // Store context for onFinish callback before starting the request
+    // This avoids stale closure issues - onFinish reads from this ref
+    pendingContextRef.current = { convId, modelId: selectedModelId }
+    setIsGenerating(true)
 
-      // await ensures we stay in this closure until streaming completes
-      // This way convIdAtSubmit and modelIdAtSubmit remain correct even if
-      // user switches conversations or models during streaming
+    try {
       await append(
         {
           role: 'user',
@@ -184,21 +192,12 @@ export function ChatArea() {
           },
         }
       )
-
-      // After streaming completes, get the last assistant message from fresh messages ref
-      const currentMessages = messagesRef.current
-      const lastMessage = currentMessages[currentMessages.length - 1]
-      if (lastMessage?.role === 'assistant') {
-        addMessage(convIdAtSubmit, {
-          role: 'assistant',
-          content: lastMessage.content,
-          modelId: modelIdAtSubmit,
-        })
-      }
+      // Note: Message saving is handled by onFinish callback which has access to
+      // the correct message content and pendingContextRef for conversation context
     } catch {
-      // Error toast is already handled by useChat's onError callback
-      // We catch here only to ensure the finally block runs for cleanup
-    } finally {
+      // Synchronous errors (before request starts) - cleanup context
+      // Async errors are handled by onError callback
+      pendingContextRef.current = null
       setIsGenerating(false)
     }
   }
