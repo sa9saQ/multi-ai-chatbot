@@ -2,15 +2,24 @@
 // Note: Using 'i' flag only (case-insensitive), NOT 'g' flag.
 // The 'g' flag causes .test() to update lastIndex, making subsequent calls
 // start from that position instead of the beginning - a security vulnerability.
+//
+// IMPORTANT: These patterns are intentionally conservative to reduce false positives
+// while still catching common injection attempts. Patterns targeting code-like syntax
+// (e.g., "system:") require line-start anchoring to avoid matching legitimate code.
 const DANGEROUS_PATTERNS = [
+  // Instruction override attempts
   /ignore\s+(all\s+)?previous\s+instructions?/i,
   /disregard\s+(all\s+)?previous\s+instructions?/i,
   /forget\s+(all\s+)?previous\s+instructions?/i,
+  // Role manipulation attempts
   /you\s+are\s+now\s+/i,
   /act\s+as\s+if\s+/i,
   /pretend\s+(to\s+be|you\s+are)/i,
-  /system\s*:\s*/i,
-  /\[system\]/i,
+  // ChatML-style system prompt injection (must be at line start)
+  // This avoids false positives on code like { system: 'production' }
+  /^system\s*:/im,
+  /^\[system\]/im,
+  // XML-style system tags (these are less common in code, so keep broad matching)
   /<\/?system>/i,
 ]
 

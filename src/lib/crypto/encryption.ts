@@ -1,3 +1,22 @@
+/**
+ * Client-side API key obfuscation using AES-GCM
+ *
+ * SECURITY NOTE: This provides obfuscation, NOT true encryption security.
+ * The encryption key is stored in localStorage alongside the encrypted data,
+ * which means:
+ * - XSS attacks can access both the key and encrypted data
+ * - This is defense-in-depth against casual inspection only
+ * - For production apps handling sensitive keys, consider:
+ *   1. Server-side session storage with HTTP-only cookies
+ *   2. Backend proxy that stores API keys securely
+ *   3. OAuth-based authentication with provider tokens
+ *
+ * This implementation prevents:
+ * - Casual reading of API keys in DevTools
+ * - Automated scraping of plain-text localStorage
+ * - Shoulder surfing attacks
+ */
+
 const ENCRYPTION_KEY_NAME = 'multi-ai-chat-encryption-key'
 const ALGORITHM = 'AES-GCM'
 const KEY_LENGTH = 256

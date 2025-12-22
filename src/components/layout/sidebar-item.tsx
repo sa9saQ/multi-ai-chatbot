@@ -122,7 +122,7 @@ export function SidebarItem({
       role="button"
       tabIndex={0}
       aria-current={isActive ? 'true' : undefined}
-      aria-label={`${conversation.title} - ${conversation.messageCount} ${t('messages')}`}
+      aria-label={`${conversation.title || t('newChat')} - ${conversation.messageCount} ${t('messages')}`}
       onClick={onSelect}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -137,7 +137,7 @@ export function SidebarItem({
     >
       <span className="text-sm">{providerIcon}</span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{conversation.title}</p>
+        <p className="truncate text-sm font-medium">{conversation.title || t('newChat')}</p>
         <p className="truncate text-xs text-muted-foreground">
           {conversation.messageCount} {t('messages')}
         </p>

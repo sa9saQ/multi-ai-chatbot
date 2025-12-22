@@ -18,14 +18,14 @@ import type { AIModel, AIProvider, ModelTier } from '@/types/ai'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { useSettingsStore } from '@/hooks/use-settings-store'
 
-function TierIcon({ tier }: { tier: ModelTier }) {
+function TierIcon({ tier, label }: { tier: ModelTier; label: string }) {
   switch (tier) {
     case 'premium':
-      return <Sparkles className="h-3 w-3 text-yellow-500" aria-label="Premium" />
+      return <Sparkles className="h-3 w-3 text-yellow-500" aria-label={label} />
     case 'reasoning':
-      return <Brain className="h-3 w-3 text-purple-500" aria-label="Reasoning" />
+      return <Brain className="h-3 w-3 text-purple-500" aria-label={label} />
     default:
-      return <Zap className="h-3 w-3 text-green-500" aria-label="Fast" />
+      return <Zap className="h-3 w-3 text-green-500" aria-label={label} />
   }
 }
 
@@ -69,6 +69,18 @@ export function ModelSelector() {
     return { description, strengths }
   }
 
+  // Get translated tier label for aria-label
+  const getTierLabel = (tier: ModelTier): string => {
+    switch (tier) {
+      case 'premium':
+        return t('tierPremium')
+      case 'reasoning':
+        return t('tierReasoning')
+      default:
+        return t('tierFast')
+    }
+  }
+
   const providers: AIProvider[] = ['openai', 'anthropic', 'google']
 
   return (
@@ -78,7 +90,7 @@ export function ModelSelector() {
           <span className="flex items-center gap-2 truncate">
             <span>{AI_PROVIDERS[selectedProvider]?.icon}</span>
             <span className="truncate">{selectedModel?.name ?? t('select')}</span>
-            {selectedModel && <TierIcon tier={selectedModel.tier} />}
+            {selectedModel && <TierIcon tier={selectedModel.tier} label={getTierLabel(selectedModel.tier)} />}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -122,7 +134,7 @@ export function ModelSelector() {
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 font-medium text-sm">
                           {model.name}
-                          <TierIcon tier={model.tier} />
+                          <TierIcon tier={model.tier} label={getTierLabel(model.tier)} />
                         </span>
                         {isSelected && (
                           <Check className="h-4 w-4 shrink-0 text-primary" />

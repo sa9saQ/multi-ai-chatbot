@@ -3,6 +3,9 @@ import type { AIProvider } from '@/types/ai'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { isValidApiKeyFormat, isValidProvider } from '@/lib/api-key-validation'
 
+// Use Node.js runtime for rate limiting (NodeJS.Timeout and .unref())
+export const runtime = 'nodejs'
+
 // Rate limit: 5 requests per minute per IP
 const RATE_LIMIT_CONFIG = {
   limit: 5,

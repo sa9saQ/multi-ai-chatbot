@@ -56,6 +56,9 @@
     "default": "Default",
     "premium": "Premium",
     "reasoning": "Reasoning",
+    "tierFast": "Fast",
+    "tierPremium": "Premium",
+    "tierReasoning": "Reasoning",
     "notConfigured": "Not configured",
     "models": {
       "gpt-5-mini": {
