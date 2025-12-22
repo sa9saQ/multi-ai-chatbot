@@ -46,20 +46,22 @@ export function ModelSelector() {
     const translationKey = modelId.replace(/\./g, '_')
     const descriptionKey = `models.${translationKey}.description`
     const strengthsKey = `models.${translationKey}.strengths`
+    const model = AI_MODELS.find((m) => m.id === modelId)
 
     const description = t(descriptionKey)
     // t() returns the key path when translation is missing (doesn't throw)
     // Check if returned value equals key path to detect missing translation
     if (description === descriptionKey) {
       // Fallback to model's default values if translation not found
-      const model = AI_MODELS.find((m) => m.id === modelId)
       return {
         description: model?.description ?? '',
         strengths: model?.strengths ?? [],
       }
     }
 
-    const strengths = t.raw(strengthsKey) as string[]
+    // t.raw() may also return key path string when translation is missing
+    const strengthsRaw = t.raw(strengthsKey)
+    const strengths = Array.isArray(strengthsRaw) ? strengthsRaw : (model?.strengths ?? [])
     return { description, strengths }
   }
 

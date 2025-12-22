@@ -29,6 +29,9 @@ interface Attachment {
 // Allowed image MIME types for security validation
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'] as const
 
+// Maximum image size (10MB) - must match client-side limit for consistency
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+
 // Validate and extract MIME type from data URL
 function isValidImageDataUrl(url: string): boolean {
   return /^data:image\/(png|jpeg|jpg|gif|webp);base64,/.test(url)
@@ -37,6 +40,16 @@ function isValidImageDataUrl(url: string): boolean {
 function getDataUrlMimeType(url: string): string | null {
   const match = url.match(/^data:([^;]+);base64,/)
   return match?.[1] ?? null
+}
+
+// Validate base64 data URL size to prevent DoS attacks
+function isDataUrlWithinSizeLimit(url: string): boolean {
+  const base64Index = url.indexOf(';base64,')
+  if (base64Index === -1) return false
+  const base64Data = url.slice(base64Index + 8)
+  // base64 encodes 3 bytes into 4 characters
+  const estimatedSize = (base64Data.length * 3) / 4
+  return estimatedSize <= MAX_IMAGE_SIZE_BYTES
 }
 
 interface ChatMessage {
@@ -113,8 +126,8 @@ export async function POST(req: Request) {
         // Add images from experimental_attachments with validation
         const attachments = message.experimental_attachments ?? []
         for (const attachment of attachments) {
-          // Validate data URL format and extract actual MIME type (don't trust client contentType)
-          if (isValidImageDataUrl(attachment.url)) {
+          // Validate data URL format, size limit, and MIME type (don't trust client contentType)
+          if (isValidImageDataUrl(attachment.url) && isDataUrlWithinSizeLimit(attachment.url)) {
             const actualMimeType = getDataUrlMimeType(attachment.url)
             if (actualMimeType && ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
               parts.push({ type: 'image', image: attachment.url })
@@ -142,10 +155,10 @@ export async function POST(req: Request) {
           if (part.type === 'text') {
             return { ...part, text: sanitizeInput(part.text) }
           }
-          // Validate image parts with same rules as attachments
+          // Validate image parts with same rules as attachments (format, size, MIME type)
           if (part.type === 'image') {
-            if (!isValidImageDataUrl(part.image)) {
-              return null // Skip invalid data URLs
+            if (!isValidImageDataUrl(part.image) || !isDataUrlWithinSizeLimit(part.image)) {
+              return null // Skip invalid or oversized data URLs
             }
             const actualMimeType = getDataUrlMimeType(part.image)
             if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
