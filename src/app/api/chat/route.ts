@@ -175,6 +175,13 @@ export async function POST(req: Request) {
           return part
         })
         .filter((part): part is ContentPart => part !== null)
+
+      // Fallback: if all parts got filtered out, add empty text part
+      // AI SDK may error on empty content array
+      if (sanitizedContent.length === 0) {
+        sanitizedContent.push({ type: 'text', text: '' })
+      }
+
       return {
         role: message.role,
         content: sanitizedContent,

@@ -40,8 +40,9 @@ export function ChatArea() {
   const [inputValue, setInputValue] = React.useState('')
   const [attachedImages, setAttachedImages] = React.useState<string[]>([])
 
-  // Track the latest conversationId to avoid stale closure in onFinish callback
+  // Track the conversationId and modelId at submit time to avoid stale closure in onFinish callback
   const conversationIdRef = React.useRef<string | null>(currentConversationId)
+  const submittedModelIdRef = React.useRef<string>(selectedModelId)
 
   // Get current model info
   const currentModel = getModelById(selectedModelId)
@@ -87,13 +88,13 @@ export function ChatArea() {
     },
     onFinish: (message) => {
       setIsGenerating(false)
-      // Use ref to get the latest conversationId, avoiding stale closure
+      // Use refs to get the values captured at submit time, avoiding stale closure
       const convId = conversationIdRef.current
       if (convId) {
         addMessage(convId, {
           role: 'assistant',
           content: message.content,
-          modelId: modelIdRef.current,
+          modelId: submittedModelIdRef.current,
         })
       }
     },
@@ -138,12 +139,14 @@ export function ChatArea() {
       return
     }
 
-    // Create conversation first if needed, and update ref immediately
+    // Create conversation first if needed, and update refs immediately
     let convId = currentConversationId
     if (!convId) {
       convId = createConversation()
     }
     conversationIdRef.current = convId
+    // Capture modelId at submit time to ensure correct value is saved in onFinish
+    submittedModelIdRef.current = selectedModelId
 
     // Build message content - capture images before clearing state
     const userMessage = inputValue
