@@ -52,6 +52,13 @@ export function ChatArea() {
   const currentModel = getModelById(selectedModelId)
   const supportsVision = currentModel?.supportsVision ?? false
 
+  // Clear attached images when switching to non-vision model
+  React.useEffect(() => {
+    if (!supportsVision) {
+      setAttachedImages(prev => prev.length > 0 ? [] : prev)
+    }
+  }, [supportsVision])
+
   React.useEffect(() => {
     const loadApiKey = async () => {
       const key = await getApiKey(selectedProvider)
@@ -154,7 +161,7 @@ export function ChatArea() {
 
     // Clear inputs
     setInputValue('')
-    setAttachedImages([])
+    setAttachedImages(prev => prev.length > 0 ? [] : prev)
 
     // Send message
     const messageContent = imagesToSend.length > 0
@@ -176,7 +183,6 @@ export function ChatArea() {
     // This avoids stale closure issues - onFinish reads from this ref
     pendingContextRef.current = { convId, modelId: selectedModelId }
     setIsGenerating(true)
-
     try {
       await append(
         {
@@ -195,7 +201,7 @@ export function ChatArea() {
       // Note: Message saving is handled by onFinish callback which has access to
       // the correct message content and pendingContextRef for conversation context
     } catch (error) {
-      // Synchronous errors (before request starts) - cleanup context and notify user
+      // Synchronous errors (before request starts) - cleanup context
       // Async errors are handled by onError callback
       pendingContextRef.current = null
       setIsGenerating(false)

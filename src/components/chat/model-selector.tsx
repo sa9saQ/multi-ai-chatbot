@@ -31,13 +31,15 @@ function TierIcon({ tier }: { tier: ModelTier }) {
 
 export function ModelSelector() {
   const t = useTranslations('model')
-  const { selectedModelId, selectedProvider, setSelectedModel } = useChatStore()
+  const { selectedModelId, selectedProvider, setSelectedModel, isGenerating } = useChatStore()
   const { hasApiKey } = useSettingsStore()
   const [open, setOpen] = React.useState(false)
 
   const selectedModel = AI_MODELS.find((m) => m.id === selectedModelId)
 
   const handleSelect = (model: AIModel) => {
+    // Prevent model switching during streaming to avoid losing AI responses
+    if (isGenerating) return
     setSelectedModel(model.id, model.provider)
     setOpen(false) // Close dropdown after selection
   }
@@ -106,7 +108,7 @@ export function ModelSelector() {
                     <button
                       key={model.id}
                       type="button"
-                      disabled={!isConfigured}
+                      disabled={!isConfigured || isGenerating}
                       onClick={() => handleSelect(model)}
                       aria-current={isSelected ? 'true' : undefined}
                       className={cn(
@@ -114,7 +116,7 @@ export function ModelSelector() {
                         'hover:bg-accent hover:text-accent-foreground',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                         isSelected && 'border-primary bg-primary/5',
-                        !isConfigured && 'cursor-not-allowed opacity-50'
+                        (!isConfigured || isGenerating) && 'cursor-not-allowed opacity-50'
                       )}
                     >
                       <div className="flex items-center justify-between">
