@@ -64,8 +64,26 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         const { encryptedKeys, settings } = get()
         if (isEncryptionSupported() && encryptedKeys[provider]) {
           try {
-            return await decrypt(encryptedKeys[provider])
+            const decrypted = await decrypt(encryptedKeys[provider])
+            return decrypted
           } catch {
+            // Decryption failed (key mismatch or corruption) - clean up stale data
+            // This ensures hasApiKey() returns false after failed decryption
+            // Use state inside set() callback to avoid race conditions
+            set((state) => {
+              const newEncryptedKeys = { ...state.encryptedKeys }
+              delete newEncryptedKeys[provider]
+              return {
+                encryptedKeys: newEncryptedKeys,
+                settings: {
+                  ...state.settings,
+                  apiKeys: {
+                    ...state.settings.apiKeys,
+                    [provider]: undefined,
+                  },
+                },
+              }
+            })
             return null
           }
         }
@@ -74,9 +92,10 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       },
 
       removeApiKey: (provider) => {
-        const newEncryptedKeys = { ...get().encryptedKeys }
-        delete newEncryptedKeys[provider]
+        // Use state inside set() callback to avoid race conditions
         set((state) => {
+          const newEncryptedKeys = { ...state.encryptedKeys }
+          delete newEncryptedKeys[provider]
           const newApiKeys = { ...state.settings.apiKeys }
           delete newApiKeys[provider]
           return {

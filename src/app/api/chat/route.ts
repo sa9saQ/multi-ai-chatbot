@@ -1,7 +1,9 @@
 import { streamText, APICallError, type CoreMessage } from 'ai'
 import { getLanguageModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
-import type { AIProvider } from '@/types/ai'
+import { AI_MODELS, type AIProvider } from '@/types/ai'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { isValidProvider } from '@/lib/api-key-validation'
 
 // Use Node.js runtime for better base64 image handling
 // Edge Runtime has known issues with base64 image processing
@@ -32,6 +34,12 @@ const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'
 // Maximum image size (10MB) - must match client-side limit for consistency
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 
+// Rate limit: 30 requests per minute per IP for chat API
+const CHAT_RATE_LIMIT_CONFIG = {
+  limit: 30,
+  windowMs: 60 * 1000, // 1 minute
+}
+
 // Validate and extract MIME type from data URL
 function isValidImageDataUrl(url: string): boolean {
   return /^data:image\/(png|jpeg|jpg|gif|webp);base64,/.test(url)
@@ -59,6 +67,23 @@ interface ChatMessage {
 }
 
 export async function POST(req: Request) {
+  // Rate limiting check
+  const clientIp = getClientIp(req)
+  const rateLimitResult = checkRateLimit(`chat:${clientIp}`, CHAT_RATE_LIMIT_CONFIG)
+
+  if (!rateLimitResult.success) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)),
+        },
+      }
+    )
+  }
+
   try {
     const body = await req.json()
 
@@ -90,6 +115,23 @@ export async function POST(req: Request) {
 
     if (!modelId || !provider) {
       return new Response(JSON.stringify({ error: 'Model ID and provider are required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Validate provider is in allowlist
+    if (!isValidProvider(provider)) {
+      return new Response(JSON.stringify({ error: 'Invalid provider' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Validate model exists and matches provider
+    const validModel = AI_MODELS.find((m) => m.id === modelId && m.provider === provider)
+    if (!validModel) {
+      return new Response(JSON.stringify({ error: 'Invalid model for this provider' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })

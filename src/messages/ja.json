@@ -56,6 +56,9 @@
     "default": "スタンダード",
     "premium": "高性能",
     "reasoning": "じっくり思考",
+    "tierFast": "高速",
+    "tierPremium": "高性能",
+    "tierReasoning": "じっくり思考",
     "notConfigured": "未設定",
     "models": {
       "gpt-5-mini": {

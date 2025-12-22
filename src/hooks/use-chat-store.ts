@@ -6,6 +6,7 @@ import type { Conversation, ConversationSummary, Message } from '@/types/chat'
 import type { AIModel, AIProvider } from '@/types/ai'
 import { AI_MODELS, getModelById } from '@/types/ai'
 import { DEFAULT_SETTINGS } from '@/types/settings'
+import { useSettingsStore } from './use-settings-store'
 
 interface ChatState {
   conversations: Conversation[]
@@ -46,18 +47,26 @@ export const useChatStore = create<ChatState & ChatActions>()(
       createConversation: () => {
         const id = generateId()
         const now = new Date()
+        // Use settings default model for new conversations
+        const { settings } = useSettingsStore.getState()
+        const userDefaultModel = getModelById(settings.defaultModelId)
+        const modelId = userDefaultModel?.id ?? get().selectedModelId
+        const provider = userDefaultModel?.provider ?? get().selectedProvider
         const newConversation: Conversation = {
           id,
           title: '',
           messages: [],
-          modelId: get().selectedModelId,
-          provider: get().selectedProvider,
+          modelId,
+          provider,
           createdAt: now,
           updatedAt: now,
         }
         set((state) => ({
           conversations: [newConversation, ...state.conversations],
           currentConversationId: id,
+          // Also update selected model to match new conversation
+          selectedModelId: modelId,
+          selectedProvider: provider,
         }))
         return id
       },
@@ -149,7 +158,7 @@ export const useChatStore = create<ChatState & ChatActions>()(
       getConversationSummaries: () => {
         return get().conversations.map((c) => ({
           id: c.id,
-          title: c.title || 'New Chat',
+          title: c.title,
           provider: c.provider,
           modelId: c.modelId,
           messageCount: c.messages.length,
@@ -179,6 +188,20 @@ export const useChatStore = create<ChatState & ChatActions>()(
         selectedModelId: state.selectedModelId,
         selectedProvider: state.selectedProvider,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Restore Date objects from ISO strings after rehydration
+        if (state?.conversations) {
+          state.conversations = state.conversations.map((conv) => ({
+            ...conv,
+            createdAt: new Date(conv.createdAt),
+            updatedAt: new Date(conv.updatedAt),
+            messages: conv.messages.map((m) => ({
+              ...m,
+              createdAt: new Date(m.createdAt),
+            })),
+          }))
+        }
+      },
     }
   )
 )
