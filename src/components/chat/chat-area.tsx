@@ -40,10 +40,6 @@ export function ChatArea() {
   const [inputValue, setInputValue] = React.useState('')
   const [attachedImages, setAttachedImages] = React.useState<string[]>([])
 
-  // Track the conversationId and modelId at submit time to avoid stale closure in onFinish callback
-  const conversationIdRef = React.useRef<string | null>(currentConversationId)
-  const submittedModelIdRef = React.useRef<string>(selectedModelId)
-
   // Get current model info
   const currentModel = getModelById(selectedModelId)
   const supportsVision = currentModel?.supportsVision ?? false
@@ -55,17 +51,6 @@ export function ChatArea() {
     }
     loadApiKey()
   }, [selectedProvider, getApiKey])
-
-  // Track latest values in refs to avoid stale closures
-  const modelIdRef = React.useRef(selectedModelId)
-  const providerRef = React.useRef(selectedProvider)
-  const apiKeyRef = React.useRef(apiKey)
-
-  React.useEffect(() => {
-    modelIdRef.current = selectedModelId
-    providerRef.current = selectedProvider
-    apiKeyRef.current = apiKey
-  }, [selectedModelId, selectedProvider, apiKey])
 
   const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
@@ -83,27 +68,20 @@ export function ChatArea() {
         role: m.role,
         content: m.content,
       })) ?? [],
-    onResponse: () => {
-      setIsGenerating(true)
-    },
-    onFinish: (message) => {
-      setIsGenerating(false)
-      // Use refs to get the values captured at submit time, avoiding stale closure
-      const convId = conversationIdRef.current
-      if (convId) {
-        addMessage(convId, {
-          role: 'assistant',
-          content: message.content,
-          modelId: submittedModelIdRef.current,
-        })
-      }
-    },
+    // Note: onFinish/onResponse removed - logic moved to handleSubmit with await
+    // to properly capture per-request context in closures (fixes race condition)
     onError: (error) => {
       setIsGenerating(false)
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(errorMessage || t('errorOccurred'))
     },
   })
+
+  // Track latest messages in ref for reading after await append()
+  const messagesRef = React.useRef(messages)
+  React.useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   // Sync messages when switching conversations OR when model changes (due to id change in useChat)
   React.useEffect(() => {
@@ -139,21 +117,21 @@ export function ChatArea() {
       return
     }
 
-    // Create conversation first if needed, and update refs immediately
-    let convId = currentConversationId
-    if (!convId) {
-      convId = createConversation()
+    // Capture values at submit time as local const variables (not refs)
+    // This ensures each request has its own closure-captured context that can't be overwritten
+    // by subsequent requests, fixing the race condition when switching conversations
+    let convIdAtSubmit = currentConversationId
+    if (!convIdAtSubmit) {
+      convIdAtSubmit = createConversation()
     }
-    conversationIdRef.current = convId
-    // Capture modelId at submit time to ensure correct value is saved in onFinish
-    submittedModelIdRef.current = selectedModelId
+    const modelIdAtSubmit = selectedModelId
 
     // Build message content - capture images before clearing state
     const userMessage = inputValue
     const imagesToSend = [...attachedImages]
 
     // Save to store (text only for now)
-    addMessage(convId, {
+    addMessage(convIdAtSubmit, {
       role: 'user',
       content: userMessage || (imagesToSend.length > 0 ? t('imageSent') : ''),
     })
@@ -184,20 +162,46 @@ export function ChatArea() {
       }
     })
 
-    await append(
-      {
-        role: 'user',
-        content: messageContent,
-        experimental_attachments: attachments.length > 0 ? attachments : undefined,
-      },
-      {
-        body: {
-          modelId: selectedModelId,
-          provider: selectedProvider,
-          apiKey,
+    try {
+      setIsGenerating(true)
+
+      // await ensures we stay in this closure until streaming completes
+      // This way convIdAtSubmit and modelIdAtSubmit remain correct even if
+      // user switches conversations or models during streaming
+      await append(
+        {
+          role: 'user',
+          content: messageContent,
+          experimental_attachments: attachments.length > 0 ? attachments : undefined,
         },
+        {
+          body: {
+            modelId: selectedModelId,
+            provider: selectedProvider,
+            apiKey,
+          },
+        }
+      )
+
+      // After streaming completes, get the last assistant message from fresh messages ref
+      const currentMessages = messagesRef.current
+      const lastMessage = currentMessages[currentMessages.length - 1]
+      if (lastMessage?.role === 'assistant') {
+        addMessage(convIdAtSubmit, {
+          role: 'assistant',
+          content: lastMessage.content,
+          modelId: modelIdAtSubmit,
+        })
       }
-    )
+    } catch (error) {
+      // Error is also handled by useChat's onError, but we catch here to ensure finally runs
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (errorMessage) {
+        toast.error(errorMessage)
+      }
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const displayMessages: Message[] = React.useMemo(() => {
