@@ -35,7 +35,6 @@ interface ChatMessage {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    console.log('[Chat API] Request body keys:', Object.keys(body))
 
     const {
       messages,
@@ -48,11 +47,6 @@ export async function POST(req: Request) {
       provider: AIProvider
       apiKey: string
     } = body
-
-    // Check for attachments in messages
-    const lastMessage = messages[messages.length - 1]
-    const hasAttachments = lastMessage?.experimental_attachments && lastMessage.experimental_attachments.length > 0
-    console.log('[Chat API] Has attachments:', hasAttachments, 'Count:', lastMessage?.experimental_attachments?.length ?? 0)
 
     if (!validateApiKey(apiKey)) {
       return new Response(JSON.stringify({ error: 'Invalid API key' }), {
@@ -83,7 +77,6 @@ export async function POST(req: Request) {
         : message.content.filter((p): p is TextPart => p.type === 'text').map(p => p.text).join(' ')
 
       if (containsDangerousPatterns(textContent)) {
-        console.warn('Potential prompt injection detected')
         return new Response(
           JSON.stringify({ error: 'Message contains disallowed content' }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -108,12 +101,10 @@ export async function POST(req: Request) {
         const attachments = message.experimental_attachments ?? []
         for (const attachment of attachments) {
           if (attachment.contentType.startsWith('image/')) {
-            console.log(`[Chat API] Adding attachment: ${attachment.name}, length: ${attachment.url.length}`)
             parts.push({ type: 'image', image: attachment.url })
           }
         }
 
-        console.log(`[Chat API] Multimodal message with ${parts.length} parts`)
         return {
           role: message.role,
           content: parts,
@@ -128,32 +119,28 @@ export async function POST(req: Request) {
         } as CoreMessage
       }
 
-      // Already multimodal content
+      // Already multimodal content - sanitize text parts
+      const sanitizedContent = message.content.map((part) => {
+        if (part.type === 'text') {
+          return { ...part, text: sanitizeInput(part.text) }
+        }
+        return part
+      })
       return {
         role: message.role,
-        content: message.content,
+        content: sanitizedContent,
       } as CoreMessage
     })
 
     const model = getLanguageModel(provider, modelId, apiKey)
 
-    // Debug: Log the model being used
-    console.log(`[Chat API] Using model: ${modelId} (provider: ${provider})`)
-    console.log(`[Chat API] Message count: ${processedMessages.length}`)
+    const result = streamText({
+      model,
+      messages: processedMessages,
+    })
 
-    try {
-      const result = streamText({
-        model,
-        messages: processedMessages,
-      })
-
-      return result.toDataStreamResponse()
-    } catch (streamError) {
-      console.error('[Chat API] streamText error:', streamError)
-      throw streamError
-    }
+    return result.toDataStreamResponse()
   } catch (error) {
-    console.error('[Chat API] Full error:', error)
 
     // Use APICallError.isInstance() for type-safe error handling
     if (APICallError.isInstance(error)) {

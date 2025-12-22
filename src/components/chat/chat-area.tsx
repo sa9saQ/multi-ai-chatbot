@@ -82,19 +82,6 @@ export function ChatArea() {
         role: m.role,
         content: m.content,
       })) ?? [],
-    // Custom fetch to debug request body
-    fetch: async (url, options) => {
-      if (options?.body) {
-        try {
-          const bodyData = JSON.parse(options.body as string)
-          console.log('[useChat fetch] Body keys:', Object.keys(bodyData))
-          console.log('[useChat fetch] Has images:', 'images' in bodyData, 'Count:', bodyData.images?.length ?? 0)
-        } catch {
-          console.log('[useChat fetch] Could not parse body')
-        }
-      }
-      return fetch(url, options)
-    },
     onResponse: () => {
       setIsGenerating(true)
     },
@@ -112,10 +99,7 @@ export function ChatArea() {
     },
     onError: (error) => {
       setIsGenerating(false)
-      console.error('Chat error:', error)
-      // Show more detailed error message
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error('Chat error details:', errorMessage)
       toast.error(errorMessage || t('errorOccurred'))
     },
   })
@@ -159,14 +143,10 @@ export function ChatArea() {
     const userMessage = inputValue
     const imagesToSend = [...attachedImages]
 
-    // Debug logging
-    console.log('[ChatArea] handleSubmit - attachedImages:', attachedImages.length)
-    console.log('[ChatArea] handleSubmit - imagesToSend:', imagesToSend.length)
-
     // Save to store (text only for now)
     addMessage(convId, {
       role: 'user',
-      content: userMessage || (imagesToSend.length > 0 ? '[画像を送信しました]' : ''),
+      content: userMessage || (imagesToSend.length > 0 ? t('imageSent') : ''),
     })
 
     // Clear inputs
@@ -175,17 +155,25 @@ export function ChatArea() {
 
     // Send message
     const messageContent = imagesToSend.length > 0
-      ? (userMessage.trim() || 'この画像について説明してください。')
+      ? (userMessage.trim() || t('describeImage'))
       : userMessage
 
-    // Convert images to experimental_attachments format
-    const attachments = imagesToSend.map((base64, index) => ({
-      name: `image-${index}.png`,
-      contentType: 'image/png',
-      url: base64, // data URL
-    }))
+    // Extract MIME type from data URL
+    const getMimeType = (dataUrl: string): string => {
+      const match = dataUrl.match(/^data:([^;]+);/)
+      return match?.[1] ?? 'image/png'
+    }
 
-    console.log('[ChatArea] append with attachments:', attachments.length)
+    // Convert images to experimental_attachments format
+    const attachments = imagesToSend.map((base64, index) => {
+      const mimeType = getMimeType(base64)
+      const ext = mimeType.split('/')[1] ?? 'png'
+      return {
+        name: `image-${index}.${ext}`,
+        contentType: mimeType,
+        url: base64,
+      }
+    })
 
     await append(
       {

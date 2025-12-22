@@ -55,10 +55,12 @@ export function ChatInput({
 
     const newImages: string[] = []
     const maxImages = 4
+    const maxFileSizeBytes = 10 * 1024 * 1024 // 10MB
 
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) continue
       if (images.length + newImages.length >= maxImages) break
+      if (file.size > maxFileSizeBytes) continue // Skip files over 10MB
 
       // Convert to base64
       const base64 = await fileToBase64(file)
@@ -103,7 +105,7 @@ export function ChatInput({
             >
               <img
                 src={image}
-                alt={`添付画像 ${index + 1}`}
+                alt={t('attachedImage', { number: index + 1 })}
                 className="h-full w-full object-cover"
               />
               <button
@@ -111,7 +113,7 @@ export function ChatInput({
                 onClick={() => handleRemoveImage(index)}
                 disabled={disabled}
                 className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-destructive-foreground shadow-sm hover:bg-destructive/90 disabled:opacity-50"
-                aria-label={`画像 ${index + 1} を削除`}
+                aria-label={t('removeImage', { number: index + 1 })}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -133,7 +135,7 @@ export function ChatInput({
               onChange={handleFileSelect}
               disabled={disabled || !canAddImages}
               className="hidden"
-              aria-label="画像をアップロード"
+              aria-label={t('uploadImage')}
             />
             <Button
               type="button"
@@ -142,7 +144,7 @@ export function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || !canAddImages}
               className="h-[60px] w-[60px] shrink-0"
-              aria-label="画像を追加"
+              aria-label={t('addImage')}
             >
               <ImagePlus className="h-5 w-5" />
             </Button>

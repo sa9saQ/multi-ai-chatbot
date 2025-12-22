@@ -30,7 +30,13 @@
     "errorOccurred": "An error occurred. Please try again.",
     "apiKeyMissing": "API key is not set. Please enter your API key in settings.",
     "deleteConfirm": "Delete this conversation?",
-    "deleteConfirmDescription": "This action cannot be undone."
+    "deleteConfirmDescription": "This action cannot be undone.",
+    "imageSent": "[Image sent]",
+    "describeImage": "Please describe this image.",
+    "attachedImage": "Attached image {number}",
+    "removeImage": "Remove image {number}",
+    "uploadImage": "Upload image",
+    "addImage": "Add image"
   },
   "sidebar": {
     "conversations": "Conversations",

@@ -30,7 +30,13 @@
     "errorOccurred": "エラーが発生しました。もう一度お試しください。",
     "apiKeyMissing": "APIキーが設定されていません。設定画面でAPIキーを入力してください。",
     "deleteConfirm": "この会話を削除しますか？",
-    "deleteConfirmDescription": "この操作は取り消せません。"
+    "deleteConfirmDescription": "この操作は取り消せません。",
+    "imageSent": "[画像を送信しました]",
+    "describeImage": "この画像について説明してください。",
+    "attachedImage": "添付画像 {number}",
+    "removeImage": "画像 {number} を削除",
+    "uploadImage": "画像をアップロード",
+    "addImage": "画像を追加"
   },
   "sidebar": {
     "conversations": "会話履歴",
