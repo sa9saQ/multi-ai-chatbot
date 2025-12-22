@@ -19,6 +19,14 @@ function isSupportedRole(role: string): role is MessageRole {
   return SUPPORTED_ROLES.includes(role as MessageRole)
 }
 
+// Extract and validate MIME type from data URL (module level to avoid recreation)
+function getMimeType(dataUrl: string): string {
+  const match = dataUrl.match(/^data:([^;]+);/)
+  const mimeType = match?.[1] ?? 'image/png'
+  // Validate it's an image type, fallback to image/png if not
+  return mimeType.startsWith('image/') ? mimeType : 'image/png'
+}
+
 export function ChatArea() {
   const t = useTranslations('chat')
   const {
@@ -145,12 +153,6 @@ export function ChatArea() {
       ? (userMessage.trim() || t('describeImage'))
       : userMessage
 
-    // Extract MIME type from data URL
-    const getMimeType = (dataUrl: string): string => {
-      const match = dataUrl.match(/^data:([^;]+);/)
-      return match?.[1] ?? 'image/png'
-    }
-
     // Convert images to experimental_attachments format
     const attachments = imagesToSend.map((base64, index) => {
       const mimeType = getMimeType(base64)
@@ -193,12 +195,9 @@ export function ChatArea() {
           modelId: modelIdAtSubmit,
         })
       }
-    } catch (error) {
-      // Error is also handled by useChat's onError, but we catch here to ensure finally runs
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      if (errorMessage) {
-        toast.error(errorMessage)
-      }
+    } catch {
+      // Error toast is already handled by useChat's onError callback
+      // We catch here only to ensure the finally block runs for cleanup
     } finally {
       setIsGenerating(false)
     }
