@@ -194,11 +194,13 @@ export function ChatArea() {
       )
       // Note: Message saving is handled by onFinish callback which has access to
       // the correct message content and pendingContextRef for conversation context
-    } catch {
-      // Synchronous errors (before request starts) - cleanup context
+    } catch (error) {
+      // Synchronous errors (before request starts) - cleanup context and notify user
       // Async errors are handled by onError callback
       pendingContextRef.current = null
       setIsGenerating(false)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      toast.error(errorMessage || t('errorOccurred'))
     }
   }
 
