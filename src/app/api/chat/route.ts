@@ -160,13 +160,6 @@ export async function POST(req: Request) {
       validatedMessages.push(msg)
     }
 
-    if (validatedMessages.length === 0) {
-      return new Response(JSON.stringify({ error: 'No valid messages provided' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
     if (!modelId || !provider) {
       return new Response(JSON.stringify({ error: 'Model ID and provider are required' }), {
         status: 400,

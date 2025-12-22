@@ -152,8 +152,10 @@ export function SidebarItem({
           variant="ghost"
           size="icon"
           className="h-10 w-10 md:h-7 md:w-7"
+          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation()
+            if (disabled) return
             setIsEditing(true)
           }}
         >
@@ -166,6 +168,7 @@ export function SidebarItem({
               variant="ghost"
               size="icon"
               className="h-10 w-10 text-destructive hover:text-destructive md:h-7 md:w-7"
+              disabled={disabled}
               onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="h-4 w-4 md:h-3 md:w-3" />
