@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { useTranslations } from 'next-intl'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChatMessage } from './chat-message'
 import { TypingIndicator } from './typing-indicator'
 import type { Message } from '@/types/chat'
@@ -16,12 +15,12 @@ interface MessageListProps {
 
 export function MessageList({ messages, isLoading, className }: MessageListProps) {
   const t = useTranslations('chat')
-  const scrollRef = React.useRef<HTMLDivElement>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const bottomRef = React.useRef<HTMLDivElement>(null)
 
+  // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
 
   if (messages.length === 0 && !isLoading) {
@@ -33,20 +32,21 @@ export function MessageList({ messages, isLoading, className }: MessageListProps
   }
 
   return (
-    <ScrollArea
-      ref={scrollRef}
-      className={cn('flex-1', className)}
+    <div
+      ref={containerRef}
+      className={cn('flex-1 overflow-y-auto', className)}
     >
-      <div className="flex flex-col" role="log" aria-live="polite" aria-label={t('messageHistory')}>
+      <div className="flex flex-col p-4" role="log" aria-live="polite" aria-label={t('messageHistory')}>
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
         {isLoading && (
-          <div className="p-4" aria-busy="true">
+          <div className="py-2" aria-busy="true">
             <TypingIndicator />
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
-    </ScrollArea>
+    </div>
   )
 }

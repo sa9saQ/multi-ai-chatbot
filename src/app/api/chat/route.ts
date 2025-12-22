@@ -1,18 +1,42 @@
-import { streamText, APICallError } from 'ai'
+import { streamText, APICallError, type CoreMessage } from 'ai'
 import { getLanguageModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
 import type { AIProvider } from '@/types/ai'
 
-export const runtime = 'edge'
+// Use Node.js runtime for better base64 image handling
+// Edge Runtime has known issues with base64 image processing
+export const runtime = 'nodejs'
+
+// Multimodal content part types
+interface TextPart {
+  type: 'text'
+  text: string
+}
+
+interface ImagePart {
+  type: 'image'
+  image: string // base64 data URL
+}
+
+type ContentPart = TextPart | ImagePart
+
+interface Attachment {
+  name: string
+  contentType: string
+  url: string // data URL (base64)
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
-  content: string
+  content: string | ContentPart[]
+  experimental_attachments?: Attachment[]
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    console.log('[Chat API] Request body keys:', Object.keys(body))
+
     const {
       messages,
       modelId,
@@ -24,6 +48,11 @@ export async function POST(req: Request) {
       provider: AIProvider
       apiKey: string
     } = body
+
+    // Check for attachments in messages
+    const lastMessage = messages[messages.length - 1]
+    const hasAttachments = lastMessage?.experimental_attachments && lastMessage.experimental_attachments.length > 0
+    console.log('[Chat API] Has attachments:', hasAttachments, 'Count:', lastMessage?.experimental_attachments?.length ?? 0)
 
     if (!validateApiKey(apiKey)) {
       return new Response(JSON.stringify({ error: 'Invalid API key' }), {
@@ -46,10 +75,14 @@ export async function POST(req: Request) {
       })
     }
 
-    // Check for prompt injection attempts in user messages
+    // Check for prompt injection attempts in user messages (text content only)
     const userMessages = messages.filter((m) => m.role === 'user')
     for (const message of userMessages) {
-      if (containsDangerousPatterns(message.content)) {
+      const textContent = typeof message.content === 'string'
+        ? message.content
+        : message.content.filter((p): p is TextPart => p.type === 'text').map(p => p.text).join(' ')
+
+      if (containsDangerousPatterns(textContent)) {
         console.warn('Potential prompt injection detected')
         return new Response(
           JSON.stringify({ error: 'Message contains disallowed content' }),
@@ -58,21 +91,69 @@ export async function POST(req: Request) {
       }
     }
 
-    const sanitizedMessages = messages.map((message) => ({
-      role: message.role,
-      content: sanitizeInput(message.content),
-    }))
+    // Process messages to handle multimodal content (experimental_attachments)
+    const processedMessages: CoreMessage[] = messages.map((message) => {
+      const hasMessageAttachments = message.experimental_attachments && message.experimental_attachments.length > 0
+
+      // If message has attachments, create multimodal content
+      if (hasMessageAttachments && message.role === 'user') {
+        const parts: ContentPart[] = []
+
+        // Add text content first
+        if (typeof message.content === 'string' && message.content.trim()) {
+          parts.push({ type: 'text', text: sanitizeInput(message.content) })
+        }
+
+        // Add images from experimental_attachments
+        const attachments = message.experimental_attachments ?? []
+        for (const attachment of attachments) {
+          if (attachment.contentType.startsWith('image/')) {
+            console.log(`[Chat API] Adding attachment: ${attachment.name}, length: ${attachment.url.length}`)
+            parts.push({ type: 'image', image: attachment.url })
+          }
+        }
+
+        console.log(`[Chat API] Multimodal message with ${parts.length} parts`)
+        return {
+          role: message.role,
+          content: parts,
+        } as CoreMessage
+      }
+
+      // Regular text message
+      if (typeof message.content === 'string') {
+        return {
+          role: message.role,
+          content: sanitizeInput(message.content),
+        } as CoreMessage
+      }
+
+      // Already multimodal content
+      return {
+        role: message.role,
+        content: message.content,
+      } as CoreMessage
+    })
 
     const model = getLanguageModel(provider, modelId, apiKey)
 
-    const result = streamText({
-      model,
-      messages: sanitizedMessages,
-    })
+    // Debug: Log the model being used
+    console.log(`[Chat API] Using model: ${modelId} (provider: ${provider})`)
+    console.log(`[Chat API] Message count: ${processedMessages.length}`)
 
-    return result.toTextStreamResponse()
+    try {
+      const result = streamText({
+        model,
+        messages: processedMessages,
+      })
+
+      return result.toDataStreamResponse()
+    } catch (streamError) {
+      console.error('[Chat API] streamText error:', streamError)
+      throw streamError
+    }
   } catch (error) {
-    console.error('Chat API error:', error)
+    console.error('[Chat API] Full error:', error)
 
     // Use APICallError.isInstance() for type-safe error handling
     if (APICallError.isInstance(error)) {

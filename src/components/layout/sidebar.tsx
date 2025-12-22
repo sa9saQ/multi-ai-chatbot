@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SidebarItem } from './sidebar-item'
 import { useChatStore } from '@/hooks/use-chat-store'
+import { useMounted } from '@/hooks/use-mounted'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
@@ -17,6 +18,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const locale = useLocale()
   const t = useTranslations('sidebar')
+  const mounted = useMounted()
   const {
     currentConversationId,
     createConversation,
@@ -26,7 +28,9 @@ export function Sidebar({ className }: SidebarProps) {
     getConversationSummaries,
   } = useChatStore()
 
-  const conversations = getConversationSummaries()
+  // Only get conversations after mount to avoid hydration mismatch
+  // (localStorage data differs between server and client)
+  const conversations = mounted ? getConversationSummaries() : []
 
   const handleNewChat = () => {
     createConversation()
