@@ -33,11 +33,13 @@ export function ModelSelector() {
   const t = useTranslations('model')
   const { selectedModelId, selectedProvider, setSelectedModel } = useChatStore()
   const { hasApiKey } = useSettingsStore()
+  const [open, setOpen] = React.useState(false)
 
   const selectedModel = AI_MODELS.find((m) => m.id === selectedModelId)
 
   const handleSelect = (model: AIModel) => {
     setSelectedModel(model.id, model.provider)
+    setOpen(false) // Close dropdown after selection
   }
 
   // Get translated description and strengths for a model
@@ -68,7 +70,7 @@ export function ModelSelector() {
   const providers: AIProvider[] = ['openai', 'anthropic', 'google']
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="w-full justify-between">
           <span className="flex items-center gap-2 truncate">

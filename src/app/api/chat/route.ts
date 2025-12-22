@@ -135,6 +135,13 @@ export async function POST(req: Request) {
           }
         }
 
+        // Fallback: if all attachments failed validation and no text, add empty text part
+        // AI SDK may error on empty content array
+        if (parts.length === 0) {
+          const sanitizedContent = typeof message.content === 'string' ? sanitizeInput(message.content) : ''
+          parts.push({ type: 'text', text: sanitizedContent })
+        }
+
         return {
           role: message.role,
           content: parts,

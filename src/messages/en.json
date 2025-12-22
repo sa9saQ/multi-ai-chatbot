@@ -29,6 +29,7 @@
     "messageHistory": "Message history",
     "errorOccurred": "An error occurred. Please try again.",
     "apiKeyMissing": "API key is not set. Please enter your API key in settings.",
+    "apiKeyLoading": "API key is still loading. Please wait a moment.",
     "deleteConfirm": "Delete this conversation?",
     "deleteConfirmDescription": "This action cannot be undone.",
     "imageSent": "[Image sent]",

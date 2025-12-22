@@ -132,6 +132,12 @@ export function ChatArea() {
       return
     }
 
+    // Guard against race condition: apiKey state may not be loaded yet after provider switch
+    if (!apiKey) {
+      toast.error(t('apiKeyLoading'))
+      return
+    }
+
     // Create conversation first if needed, and update ref immediately
     let convId = currentConversationId
     if (!convId) {
