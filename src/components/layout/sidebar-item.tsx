@@ -23,6 +23,7 @@ import { AI_PROVIDERS } from '@/types/ai'
 interface SidebarItemProps {
   conversation: ConversationSummary
   isActive: boolean
+  disabled?: boolean
   onSelect: () => void
   onDelete: () => void
   onRename: (newTitle: string) => void
@@ -33,6 +34,7 @@ const MAX_TITLE_LENGTH = 100
 export function SidebarItem({
   conversation,
   isActive,
+  disabled = false,
   onSelect,
   onDelete,
   onRename,
@@ -120,11 +122,13 @@ export function SidebarItem({
   return (
     <div
       role="button"
-      tabIndex={0}
+      tabIndex={disabled ? -1 : 0}
       aria-current={isActive ? 'true' : undefined}
+      aria-disabled={disabled}
       aria-label={`${conversation.title || t('newChat')} - ${conversation.messageCount} ${t('messages')}`}
-      onClick={onSelect}
+      onClick={disabled ? undefined : onSelect}
       onKeyDown={(e) => {
+        if (disabled) return
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onSelect()
@@ -132,7 +136,8 @@ export function SidebarItem({
       }}
       className={cn(
         'group flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-accent',
-        isActive && 'bg-accent'
+        isActive && 'bg-accent',
+        disabled && 'cursor-not-allowed opacity-50'
       )}
     >
       <span className="text-sm">{providerIcon}</span>
@@ -147,8 +152,10 @@ export function SidebarItem({
           variant="ghost"
           size="icon"
           className="h-10 w-10 md:h-7 md:w-7"
+          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation()
+            if (disabled) return
             setIsEditing(true)
           }}
         >
@@ -161,6 +168,7 @@ export function SidebarItem({
               variant="ghost"
               size="icon"
               className="h-10 w-10 text-destructive hover:text-destructive md:h-7 md:w-7"
+              disabled={disabled}
               onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="h-4 w-4 md:h-3 md:w-3" />

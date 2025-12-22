@@ -21,6 +21,7 @@ export function Sidebar({ className }: SidebarProps) {
   const mounted = useMounted()
   const {
     currentConversationId,
+    isGenerating,
     createConversation,
     deleteConversation,
     selectConversation,
@@ -33,6 +34,7 @@ export function Sidebar({ className }: SidebarProps) {
   const conversations = mounted ? getConversationSummaries() : []
 
   const handleNewChat = () => {
+    if (isGenerating) return
     createConversation()
   }
 
@@ -44,7 +46,7 @@ export function Sidebar({ className }: SidebarProps) {
       )}
     >
       <div className="p-2">
-        <Button className="w-full justify-start gap-2" onClick={handleNewChat}>
+        <Button className="w-full justify-start gap-2" onClick={handleNewChat} disabled={isGenerating}>
           <Plus className="h-4 w-4" />
           {t('newChat')}
         </Button>
@@ -62,6 +64,7 @@ export function Sidebar({ className }: SidebarProps) {
                 key={conversation.id}
                 conversation={conversation}
                 isActive={conversation.id === currentConversationId}
+                disabled={isGenerating}
                 onSelect={() => selectConversation(conversation.id)}
                 onDelete={() => deleteConversation(conversation.id)}
                 onRename={(title) => updateConversationTitle(conversation.id, title)}

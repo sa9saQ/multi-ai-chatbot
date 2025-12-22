@@ -26,11 +26,20 @@ async function getOrCreateEncryptionKey(): Promise<CryptoKey> {
   const storedKey = localStorage.getItem(ENCRYPTION_KEY_NAME)
 
   if (storedKey) {
-    const keyData = JSON.parse(storedKey)
-    return crypto.subtle.importKey('jwk', keyData, { name: ALGORITHM }, true, [
-      'encrypt',
-      'decrypt',
-    ])
+    try {
+      const keyData = JSON.parse(storedKey)
+      return await crypto.subtle.importKey('jwk', keyData, { name: ALGORITHM }, true, [
+        'encrypt',
+        'decrypt',
+      ])
+    } catch {
+      // Key is corrupted (invalid JSON or invalid key data)
+      // Remove it and fall through to generate a new one
+      // Note: This means any previously encrypted data will be unrecoverable,
+      // but use-settings-store already handles this by cleaning up stale encrypted keys
+      localStorage.removeItem(ENCRYPTION_KEY_NAME)
+      console.warn('Corrupted encryption key detected and removed. Generating new key.')
+    }
   }
 
   // Generate a new key
