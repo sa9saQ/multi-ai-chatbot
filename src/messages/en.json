@@ -29,8 +29,15 @@
     "messageHistory": "Message history",
     "errorOccurred": "An error occurred. Please try again.",
     "apiKeyMissing": "API key is not set. Please enter your API key in settings.",
+    "apiKeyLoading": "API key is still loading. Please wait a moment.",
     "deleteConfirm": "Delete this conversation?",
-    "deleteConfirmDescription": "This action cannot be undone."
+    "deleteConfirmDescription": "This action cannot be undone.",
+    "imageSent": "[Image sent]",
+    "describeImage": "Please describe this image.",
+    "attachedImage": "Attached image {number}",
+    "removeImage": "Remove image {number}",
+    "uploadImage": "Upload image",
+    "addImage": "Add image"
   },
   "sidebar": {
     "conversations": "Conversations",
@@ -48,7 +55,58 @@
     "current": "Current Model",
     "default": "Default",
     "premium": "Premium",
-    "notConfigured": "Not configured"
+    "reasoning": "Reasoning",
+    "notConfigured": "Not configured",
+    "models": {
+      "gpt-5-mini": {
+        "description": "Fast responses at low cost",
+        "strengths": ["Fast", "Affordable", "Daily use"]
+      },
+      "gpt-5_2": {
+        "description": "Smart and balanced, latest model",
+        "strengths": ["Smart", "Balanced", "Latest"]
+      },
+      "gpt-5_2-pro": {
+        "description": "Highest accuracy for difficult questions",
+        "strengths": ["Most accurate", "Deep thinking", "Best quality"]
+      },
+      "o4-mini": {
+        "description": "Great for math and logical problems",
+        "strengths": ["Math", "Logic", "Step-by-step"]
+      },
+      "o3": {
+        "description": "Best for complex problem solving",
+        "strengths": ["Problem solving", "Analysis", "Research"]
+      },
+      "claude-3-5-haiku-latest": {
+        "description": "Fast and friendly responses",
+        "strengths": ["Fast", "Friendly", "Affordable"]
+      },
+      "claude-sonnet-4-5-20250929": {
+        "description": "Great balance of speed and smarts",
+        "strengths": ["Balanced", "Thoughtful", "Reliable"]
+      },
+      "claude-opus-4-5-20251101": {
+        "description": "Most intelligent, fewer mistakes",
+        "strengths": ["Smartest", "Careful", "Detailed"]
+      },
+      "gemini-2_5-flash": {
+        "description": "Fast and very affordable",
+        "strengths": ["Fast", "Cheap", "Images OK"]
+      },
+      "gemini-2_5-pro": {
+        "description": "Powerful and stable",
+        "strengths": ["Powerful", "Stable", "Reliable"]
+      },
+      "gemini-3-flash-preview": {
+        "description": "Newest and fastest",
+        "strengths": ["Newest", "Fast", "Smart"]
+      },
+      "gemini-3-pro-preview": {
+        "description": "Most capable reasoning model",
+        "strengths": ["Reasoning", "Complex tasks", "Analysis"]
+      }
+    }
   },
   "template": {
     "title": "Templates",

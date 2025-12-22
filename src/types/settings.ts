@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   locale: 'ja',
   theme: 'system',
   defaultProvider: 'openai',
-  defaultModelId: 'gpt-4o-mini',
+  defaultModelId: 'gpt-5-mini',
   apiKeys: {},
 }
 

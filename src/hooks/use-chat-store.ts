@@ -5,6 +5,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Conversation, ConversationSummary, Message } from '@/types/chat'
 import type { AIModel, AIProvider } from '@/types/ai'
 import { AI_MODELS, getModelById } from '@/types/ai'
+import { DEFAULT_SETTINGS } from '@/types/settings'
 
 interface ChatState {
   conversations: Conversation[]
@@ -29,7 +30,9 @@ interface ChatActions {
 }
 
 const generateId = () => crypto.randomUUID()
-const defaultModel = AI_MODELS[0]
+// Use DEFAULT_SETTINGS.defaultModelId to ensure affordable default model
+// AI_MODELS[0] is unreliable after reordering (could be expensive model like o3)
+const defaultModel = getModelById(DEFAULT_SETTINGS.defaultModelId) ?? AI_MODELS[0]
 
 export const useChatStore = create<ChatState & ChatActions>()(
   persist(

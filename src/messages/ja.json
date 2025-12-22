@@ -29,8 +29,15 @@
     "messageHistory": "メッセージ履歴",
     "errorOccurred": "エラーが発生しました。もう一度お試しください。",
     "apiKeyMissing": "APIキーが設定されていません。設定画面でAPIキーを入力してください。",
+    "apiKeyLoading": "APIキーを読み込み中です。しばらくお待ちください。",
     "deleteConfirm": "この会話を削除しますか？",
-    "deleteConfirmDescription": "この操作は取り消せません。"
+    "deleteConfirmDescription": "この操作は取り消せません。",
+    "imageSent": "[画像を送信しました]",
+    "describeImage": "この画像について説明してください。",
+    "attachedImage": "添付画像 {number}",
+    "removeImage": "画像 {number} を削除",
+    "uploadImage": "画像をアップロード",
+    "addImage": "画像を追加"
   },
   "sidebar": {
     "conversations": "会話履歴",
@@ -46,9 +53,60 @@
   "model": {
     "select": "モデルを選択",
     "current": "現在のモデル",
-    "default": "デフォルト",
-    "premium": "プレミアム",
-    "notConfigured": "未設定"
+    "default": "スタンダード",
+    "premium": "高性能",
+    "reasoning": "じっくり思考",
+    "notConfigured": "未設定",
+    "models": {
+      "gpt-5-mini": {
+        "description": "すばやく回答、お手頃価格",
+        "strengths": ["高速", "お手頃", "日常使い"]
+      },
+      "gpt-5_2": {
+        "description": "賢くてバランス良い最新モデル",
+        "strengths": ["賢い", "バランス良い", "最新"]
+      },
+      "gpt-5_2-pro": {
+        "description": "難しい質問に最高精度で回答",
+        "strengths": ["最高精度", "じっくり考える", "最高品質"]
+      },
+      "o4-mini": {
+        "description": "数学や論理問題が得意",
+        "strengths": ["数学", "論理", "順序立てて説明"]
+      },
+      "o3": {
+        "description": "複雑な問題解決が得意",
+        "strengths": ["問題解決", "分析", "調査"]
+      },
+      "claude-3-5-haiku-latest": {
+        "description": "すばやく親しみやすい回答",
+        "strengths": ["高速", "親しみやすい", "お手頃"]
+      },
+      "claude-sonnet-4-5-20250929": {
+        "description": "速さと賢さのバランスが良い",
+        "strengths": ["バランス良い", "丁寧", "信頼できる"]
+      },
+      "claude-opus-4-5-20251101": {
+        "description": "最も賢く、ミスが少ない",
+        "strengths": ["最も賢い", "慎重", "詳しい"]
+      },
+      "gemini-2_5-flash": {
+        "description": "高速でとてもお手頃",
+        "strengths": ["高速", "格安", "画像OK"]
+      },
+      "gemini-2_5-pro": {
+        "description": "高性能で安定",
+        "strengths": ["高性能", "安定", "信頼性"]
+      },
+      "gemini-3-flash-preview": {
+        "description": "最新で最速",
+        "strengths": ["最新", "高速", "賢い"]
+      },
+      "gemini-3-pro-preview": {
+        "description": "最も賢い推論モデル",
+        "strengths": ["推論", "複雑なタスク", "分析"]
+      }
+    }
   },
   "template": {
     "title": "テンプレート",
