@@ -62,9 +62,14 @@ export function ChatInput({
       if (images.length + newImages.length >= maxImages) break
       if (file.size > maxFileSizeBytes) continue // Skip files over 10MB
 
-      // Convert to base64
-      const base64 = await fileToBase64(file)
-      newImages.push(base64)
+      // Convert to base64 with error handling
+      try {
+        const base64 = await fileToBase64(file)
+        newImages.push(base64)
+      } catch {
+        // Skip files that fail to read (e.g., file deleted during read)
+        continue
+      }
     }
 
     if (newImages.length > 0) {

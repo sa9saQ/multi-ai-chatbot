@@ -26,6 +26,19 @@ interface Attachment {
   url: string // data URL (base64)
 }
 
+// Allowed image MIME types for security validation
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'] as const
+
+// Validate and extract MIME type from data URL
+function isValidImageDataUrl(url: string): boolean {
+  return /^data:image\/(png|jpeg|jpg|gif|webp);base64,/.test(url)
+}
+
+function getDataUrlMimeType(url: string): string | null {
+  const match = url.match(/^data:([^;]+);base64,/)
+  return match?.[1] ?? null
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string | ContentPart[]
@@ -97,11 +110,15 @@ export async function POST(req: Request) {
           parts.push({ type: 'text', text: sanitizeInput(message.content) })
         }
 
-        // Add images from experimental_attachments
+        // Add images from experimental_attachments with validation
         const attachments = message.experimental_attachments ?? []
         for (const attachment of attachments) {
-          if (attachment.contentType.startsWith('image/')) {
-            parts.push({ type: 'image', image: attachment.url })
+          // Validate data URL format and extract actual MIME type (don't trust client contentType)
+          if (isValidImageDataUrl(attachment.url)) {
+            const actualMimeType = getDataUrlMimeType(attachment.url)
+            if (actualMimeType && ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
+              parts.push({ type: 'image', image: attachment.url })
+            }
           }
         }
 
