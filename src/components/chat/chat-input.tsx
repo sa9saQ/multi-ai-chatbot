@@ -33,6 +33,10 @@ export function ChatInput({
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ignore Enter during IME composition (e.g., Japanese input confirmation)
+    // isComposing is true when the user is in the middle of composing text
+    if (e.nativeEvent.isComposing) return
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (!disabled && (value.trim() || images.length > 0)) {
@@ -55,7 +59,11 @@ export function ChatInput({
 
     const newImages: string[] = []
     const maxImages = 4
-    const maxFileSizeBytes = 10 * 1024 * 1024 // 10MB
+    const maxFileSizeBytes = 10 * 1024 * 1024 // 10MB per image
+    const maxTotalSizeBytes = 20 * 1024 * 1024 // 20MB total (must match server limit)
+
+    // Calculate current total size of already attached images
+    let currentTotalSize = images.reduce((sum, img) => sum + getBase64Size(img), 0)
 
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) continue
@@ -65,7 +73,13 @@ export function ChatInput({
       // Convert to base64 with error handling
       try {
         const base64 = await fileToBase64(file)
+        const imageSize = getBase64Size(base64)
+
+        // Check total size limit (prevent "client passes but server rejects")
+        if (currentTotalSize + imageSize > maxTotalSizeBytes) continue
+
         newImages.push(base64)
+        currentTotalSize += imageSize
       } catch {
         // Skip files that fail to read (e.g., file deleted during read)
         continue
@@ -191,4 +205,17 @@ async function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+// Calculate the decoded size of a base64 data URL
+// This matches the server-side calculation in route.ts
+function getBase64Size(dataUrl: string): number {
+  const base64Index = dataUrl.indexOf(';base64,')
+  if (base64Index === -1) return 0
+  // Remove whitespace to match server-side calculation exactly
+  const base64Data = dataUrl.slice(base64Index + 8).replace(/\s/g, '')
+  const paddingMatch = base64Data.match(/=+$/)
+  const paddingCount = paddingMatch ? paddingMatch[0].length : 0
+  // base64 encodes 3 bytes into 4 characters
+  return (base64Data.length * 3) / 4 - paddingCount
 }
