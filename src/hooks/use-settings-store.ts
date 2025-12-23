@@ -110,7 +110,15 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
 
       hasApiKey: (provider) => {
         const { encryptedKeys, settings } = get()
-        return !!(encryptedKeys[provider] || settings.apiKeys[provider])
+        // When encryption is supported, check encryptedKeys first (the actual encrypted data)
+        if (isEncryptionSupported() && encryptedKeys[provider]) {
+          return true
+        }
+        // For non-encrypted keys, check settings but exclude the placeholder value
+        // '***encrypted***' is set when encryption is used, so if encryptedKeys is missing
+        // but this placeholder exists, the key is not actually available
+        const key = settings.apiKeys[provider]
+        return !!key && key !== '***encrypted***'
       },
 
       setLocale: (locale) => {

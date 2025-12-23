@@ -35,7 +35,8 @@ const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 
 // Maximum number of images per request to prevent DoS
-const MAX_IMAGES_PER_REQUEST = 5
+// Must match client-side limit in chat-input.tsx for consistent UX
+const MAX_IMAGES_PER_REQUEST = 4
 
 // Maximum total image size per request (20MB) to prevent memory exhaustion
 // NOTE: These limits are enforced across ALL messages in a request

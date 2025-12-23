@@ -59,10 +59,20 @@ export function ChatArea() {
     }
   }, [supportsVision])
 
+  // Version tracking to prevent race conditions when provider changes rapidly
+  // Each provider change increments version; stale async callbacks are ignored
+  const providerVersionRef = React.useRef(0)
+
   React.useEffect(() => {
+    // Increment version for this effect run
+    const currentVersion = ++providerVersionRef.current
     const loadApiKey = async () => {
       const key = await getApiKey(selectedProvider)
-      setApiKey(key)
+      // Only update state if this is still the current version
+      // (prevents stale Promise from overwriting newer provider's key)
+      if (currentVersion === providerVersionRef.current) {
+        setApiKey(key)
+      }
     }
     loadApiKey()
   }, [selectedProvider, getApiKey])

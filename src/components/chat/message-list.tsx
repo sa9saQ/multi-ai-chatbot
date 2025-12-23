@@ -18,9 +18,40 @@ export function MessageList({ messages, isLoading, className }: MessageListProps
   const containerRef = React.useRef<HTMLDivElement>(null)
   const bottomRef = React.useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when new messages arrive
+  // Track if user has manually scrolled away from bottom
+  const isNearBottomRef = React.useRef(true)
+  const lastMessageCountRef = React.useRef(messages.length)
+
+  // Detect user scroll position to avoid auto-scrolling while reading history
+  const handleScroll = React.useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+    // Consider "near bottom" if within 100px of the bottom
+    const threshold = 100
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    isNearBottomRef.current = distanceFromBottom < threshold
+  }, [])
+
   React.useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = containerRef.current
+    if (!container) return
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  // Auto-scroll to bottom when new messages arrive (only if user is near bottom)
+  React.useEffect(() => {
+    // Don't interrupt user reading history
+    if (!isNearBottomRef.current) return
+
+    const messageCountChanged = messages.length !== lastMessageCountRef.current
+    lastMessageCountRef.current = messages.length
+
+    // Use instant scroll during streaming to prevent jank from overlapping animations
+    // Use smooth scroll only for discrete new messages when not streaming
+    const behavior = isLoading || !messageCountChanged ? 'instant' : 'smooth'
+
+    bottomRef.current?.scrollIntoView({ behavior })
   }, [messages, isLoading])
 
   if (messages.length === 0 && !isLoading) {
