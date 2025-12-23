@@ -86,12 +86,15 @@ export const useChatStore = create<ChatState & ChatActions>()(
                 selectedProvider: newCurrentConversation.provider,
               }
             } else {
-              // No conversations left - reset to default model
+              // No conversations left - reset to user's configured default model
+              // This matches the behavior in createConversation() for consistency
+              const { settings } = useSettingsStore.getState()
+              const userDefaultModel = getModelById(settings.defaultModelId) ?? defaultModel
               return {
                 conversations: newConversations,
                 currentConversationId: null,
-                selectedModelId: defaultModel.id,
-                selectedProvider: defaultModel.provider,
+                selectedModelId: userDefaultModel.id,
+                selectedProvider: userDefaultModel.provider,
               }
             }
           }
@@ -190,9 +193,14 @@ export const useChatStore = create<ChatState & ChatActions>()(
       },
 
       clearAllConversations: () => {
+        // Reset to user's configured default model for consistency with deleteConversation
+        const { settings } = useSettingsStore.getState()
+        const userDefaultModel = getModelById(settings.defaultModelId) ?? defaultModel
         set({
           conversations: [],
           currentConversationId: null,
+          selectedModelId: userDefaultModel.id,
+          selectedProvider: userDefaultModel.provider,
         })
       },
     }),
