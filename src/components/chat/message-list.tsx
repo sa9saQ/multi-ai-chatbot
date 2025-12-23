@@ -47,12 +47,13 @@ export function MessageList({ messages, isLoading, className }: MessageListProps
     const messageCountChanged = messages.length !== lastMessageCountRef.current
     lastMessageCountRef.current = messages.length
 
-    // Use auto scroll during streaming to prevent jank from overlapping animations
+    // Use instant scroll during streaming to prevent jank from overlapping animations
     // Use smooth scroll only for discrete new messages when not streaming
-    // Note: 'auto' is used instead of 'instant' for TypeScript ScrollBehavior compatibility
-    const behavior: ScrollBehavior = isLoading || !messageCountChanged ? 'auto' : 'smooth'
+    // Note: 'instant' is widely supported but not in TypeScript's ScrollBehavior type
+    // Using type assertion since 'auto' respects CSS scroll-behavior which could cause issues
+    const behavior = isLoading || !messageCountChanged ? 'instant' : 'smooth'
 
-    bottomRef.current?.scrollIntoView({ behavior })
+    bottomRef.current?.scrollIntoView({ behavior: behavior as ScrollBehavior })
   }, [messages, isLoading])
 
   if (messages.length === 0 && !isLoading) {
