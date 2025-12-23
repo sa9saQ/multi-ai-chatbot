@@ -166,12 +166,29 @@ export function ChatArea() {
     let convId = currentConversationId
     let effectiveModelId = selectedModelId
     let effectiveProvider = selectedProvider
+    let effectiveApiKey = apiKey
     if (!convId) {
       convId = createConversation()
       // Get fresh state after conversation creation (it updates selectedModelId/selectedProvider)
       const freshState = useChatStore.getState()
       effectiveModelId = freshState.selectedModelId
       effectiveProvider = freshState.selectedProvider
+
+      // If provider changed (user's default model is from different provider),
+      // we need to fetch the correct API key for the new provider
+      if (effectiveProvider !== selectedProvider) {
+        if (!hasApiKey(effectiveProvider)) {
+          toast.error(t('apiKeyMissing'))
+          return
+        }
+        // Fetch API key for the effective provider
+        const newApiKey = await getApiKey(effectiveProvider)
+        if (!newApiKey) {
+          toast.error(t('apiKeyLoading'))
+          return
+        }
+        effectiveApiKey = newApiKey
+      }
     }
 
     // Build message content - capture images before clearing state
@@ -220,7 +237,7 @@ export function ChatArea() {
           body: {
             modelId: effectiveModelId,
             provider: effectiveProvider,
-            apiKey,
+            apiKey: effectiveApiKey,
           },
         }
       )
