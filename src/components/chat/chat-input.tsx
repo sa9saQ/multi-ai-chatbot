@@ -212,7 +212,8 @@ async function fileToBase64(file: File): Promise<string> {
 function getBase64Size(dataUrl: string): number {
   const base64Index = dataUrl.indexOf(';base64,')
   if (base64Index === -1) return 0
-  const base64Data = dataUrl.slice(base64Index + 8)
+  // Remove whitespace to match server-side calculation exactly
+  const base64Data = dataUrl.slice(base64Index + 8).replace(/\s/g, '')
   const paddingMatch = base64Data.match(/=+$/)
   const paddingCount = paddingMatch ? paddingMatch[0].length : 0
   // base64 encodes 3 bytes into 4 characters
