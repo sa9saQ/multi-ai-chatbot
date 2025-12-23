@@ -109,20 +109,39 @@ function isValidContentPart(part: unknown): part is ContentPart {
   return false
 }
 
+// Type guard for valid attachment
+function isValidAttachment(attachment: unknown): attachment is Attachment {
+  if (typeof attachment !== 'object' || attachment === null) return false
+  const a = attachment as Record<string, unknown>
+  return (
+    typeof a.name === 'string' &&
+    typeof a.contentType === 'string' &&
+    typeof a.url === 'string'
+  )
+}
+
 // Validate message structure
 function isValidMessage(msg: unknown): msg is ChatMessage {
   if (typeof msg !== 'object' || msg === null) return false
   const m = msg as Record<string, unknown>
-  
+
   // Role must be allowed (user or assistant only)
   if (!isAllowedRole(m.role)) return false
-  
+
   // Content must be string or array of valid parts
-  if (typeof m.content === 'string') return true
-  if (Array.isArray(m.content)) {
-    return m.content.every(isValidContentPart)
+  const hasValidContent =
+    typeof m.content === 'string' ||
+    (Array.isArray(m.content) && m.content.every(isValidContentPart))
+  if (!hasValidContent) return false
+
+  // experimental_attachments must be undefined or array of valid attachments
+  // This prevents .entries() from throwing on non-array types
+  if (m.experimental_attachments !== undefined) {
+    if (!Array.isArray(m.experimental_attachments)) return false
+    if (!m.experimental_attachments.every(isValidAttachment)) return false
   }
-  return false
+
+  return true
 }
 
 interface ChatMessage {
@@ -149,20 +168,31 @@ export async function POST(req: Request) {
     )
   }
 
+  // Parse JSON body with explicit error handling for invalid JSON
+  let body: unknown
   try {
-    const body = await req.json()
+    body = await req.json()
+  } catch {
+    // Invalid JSON should return 400 Bad Request, not 500
+    return new Response(
+      JSON.stringify({ error: 'Invalid JSON in request body' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
 
+  try {
+    // Type assertion after JSON parsing - validation follows
     const {
       messages,
       modelId,
       provider,
       apiKey,
-    }: {
+    } = body as {
       messages: ChatMessage[]
       modelId: string
       provider: AIProvider
       apiKey: string
-    } = body
+    }
 
     if (!validateApiKey(apiKey)) {
       return new Response(JSON.stringify({ error: 'Invalid API key' }), {
