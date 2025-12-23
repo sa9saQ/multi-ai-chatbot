@@ -443,6 +443,10 @@ export async function POST(req: Request) {
     const result = streamText({
       model,
       messages: processedMessages,
+      onFinish: () => {
+        // Close the StreamData to properly flush data and terminate the response
+        data.close()
+      },
     })
 
     return result.toDataStreamResponse({ data })
