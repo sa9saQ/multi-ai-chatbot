@@ -86,6 +86,7 @@ export function ChatArea() {
         id: m.id,
         role: m.role,
         content: m.content,
+        createdAt: m.createdAt,
       })) ?? [],
     onFinish: (message) => {
       setIsGenerating(false)
@@ -121,6 +122,7 @@ export function ChatArea() {
           id: m.id,
           role: m.role,
           content: m.content,
+          createdAt: m.createdAt,
         })) ?? []
     setMessages(newMessages)
   }, [currentConversationId, selectedModelId, selectedProvider, setMessages])
