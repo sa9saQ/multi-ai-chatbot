@@ -74,13 +74,33 @@ export const useChatStore = create<ChatState & ChatActions>()(
       deleteConversation: (id) => {
         set((state) => {
           const newConversations = state.conversations.filter((c) => c.id !== id)
-          const newCurrentId =
-            state.currentConversationId === id
-              ? newConversations[0]?.id ?? null
-              : state.currentConversationId
+          // Check if we need to switch to a different conversation
+          if (state.currentConversationId === id) {
+            const newCurrentConversation = newConversations[0] ?? null
+            if (newCurrentConversation) {
+              // Switch to another conversation - also sync model selection
+              return {
+                conversations: newConversations,
+                currentConversationId: newCurrentConversation.id,
+                selectedModelId: newCurrentConversation.modelId,
+                selectedProvider: newCurrentConversation.provider,
+              }
+            } else {
+              // No conversations left - reset to user's configured default model
+              // This matches the behavior in createConversation() for consistency
+              const { settings } = useSettingsStore.getState()
+              const userDefaultModel = getModelById(settings.defaultModelId) ?? defaultModel
+              return {
+                conversations: newConversations,
+                currentConversationId: null,
+                selectedModelId: userDefaultModel.id,
+                selectedProvider: userDefaultModel.provider,
+              }
+            }
+          }
+          // Deleting a non-current conversation - just remove it
           return {
             conversations: newConversations,
-            currentConversationId: newCurrentId,
           }
         })
       },
@@ -173,9 +193,14 @@ export const useChatStore = create<ChatState & ChatActions>()(
       },
 
       clearAllConversations: () => {
+        // Reset to user's configured default model for consistency with deleteConversation
+        const { settings } = useSettingsStore.getState()
+        const userDefaultModel = getModelById(settings.defaultModelId) ?? defaultModel
         set({
           conversations: [],
           currentConversationId: null,
+          selectedModelId: userDefaultModel.id,
+          selectedProvider: userDefaultModel.provider,
         })
       },
     }),

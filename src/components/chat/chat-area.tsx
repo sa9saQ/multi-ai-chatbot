@@ -43,6 +43,8 @@ export function ChatArea() {
   )
   const { getApiKey, hasApiKey } = useSettingsStore()
   const isHydrated = useSettingsStore((state) => state.isHydrated)
+  // Track encryptedKeys changes to re-fetch API key when user updates it for the same provider
+  const encryptedKeys = useSettingsStore((state) => state.encryptedKeys)
 
   const [apiKey, setApiKey] = React.useState<string | null>(null)
   const [inputValue, setInputValue] = React.useState('')
@@ -63,6 +65,9 @@ export function ChatArea() {
   // Each provider change increments version; stale async callbacks are ignored
   const providerVersionRef = React.useRef(0)
 
+  // Track the current provider's encrypted key to trigger re-fetch when updated
+  const currentProviderKey = encryptedKeys[selectedProvider]
+
   React.useEffect(() => {
     // Increment version for this effect run
     const currentVersion = ++providerVersionRef.current
@@ -75,7 +80,8 @@ export function ChatArea() {
       }
     }
     loadApiKey()
-  }, [selectedProvider, getApiKey])
+    // Re-fetch when provider changes OR when the current provider's key is updated
+  }, [selectedProvider, getApiKey, currentProviderKey])
 
   // Store request context for onFinish callback (only one active request at a time due to isLoading guard)
   // This ref is set before calling append() and read in onFinish to save the message to the correct conversation
@@ -156,9 +162,33 @@ export function ChatArea() {
     }
 
     // Create conversation if needed
+    // Capture current model/provider (may be updated by createConversation)
     let convId = currentConversationId
+    let effectiveModelId = selectedModelId
+    let effectiveProvider = selectedProvider
+    let effectiveApiKey = apiKey
     if (!convId) {
       convId = createConversation()
+      // Get fresh state after conversation creation (it updates selectedModelId/selectedProvider)
+      const freshState = useChatStore.getState()
+      effectiveModelId = freshState.selectedModelId
+      effectiveProvider = freshState.selectedProvider
+
+      // If provider changed (user's default model is from different provider),
+      // we need to fetch the correct API key for the new provider
+      if (effectiveProvider !== selectedProvider) {
+        if (!hasApiKey(effectiveProvider)) {
+          toast.error(t('apiKeyMissing'))
+          return
+        }
+        // Fetch API key for the effective provider
+        const newApiKey = await getApiKey(effectiveProvider)
+        if (!newApiKey) {
+          toast.error(t('apiKeyLoading'))
+          return
+        }
+        effectiveApiKey = newApiKey
+      }
     }
 
     // Build message content - capture images before clearing state
@@ -194,7 +224,7 @@ export function ChatArea() {
 
     // Store context for onFinish callback before starting the request
     // This avoids stale closure issues - onFinish reads from this ref
-    pendingContextRef.current = { convId, modelId: selectedModelId }
+    pendingContextRef.current = { convId, modelId: effectiveModelId }
     setIsGenerating(true)
     try {
       await append(
@@ -205,9 +235,9 @@ export function ChatArea() {
         },
         {
           body: {
-            modelId: selectedModelId,
-            provider: selectedProvider,
-            apiKey,
+            modelId: effectiveModelId,
+            provider: effectiveProvider,
+            apiKey: effectiveApiKey,
           },
         }
       )

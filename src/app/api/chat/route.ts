@@ -181,6 +181,15 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Validate body is a non-null object before destructuring
+    // Arrays and null are valid JSON but not valid request bodies
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return new Response(
+        JSON.stringify({ error: 'Request body must be a JSON object' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Type assertion after JSON parsing - validation follows
     const {
       messages,

@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useTranslations } from 'next-intl'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Brain } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import {
@@ -104,6 +104,19 @@ export function DefaultModelSelect() {
                       <span className="flex items-center gap-2">
                         <span>{model.name}</span>
                         <Sparkles className="h-3 w-3 text-yellow-500" />
+                      </span>
+                    </SelectItem>
+                  ))}
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel>{tModel('reasoning')}</SelectLabel>
+                {availableModels
+                  .filter((m) => m.tier === 'reasoning')
+                  .map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      <span className="flex items-center gap-2">
+                        <span>{model.name}</span>
+                        <Brain className="h-3 w-3 text-purple-500" />
                       </span>
                     </SelectItem>
                   ))}
