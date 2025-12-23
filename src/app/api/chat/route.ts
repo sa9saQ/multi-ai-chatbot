@@ -34,6 +34,12 @@ const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'
 // Maximum image size (10MB) - must match client-side limit for consistency
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 
+// Maximum number of images per message to prevent DoS
+const MAX_IMAGES_PER_MESSAGE = 5
+
+// Maximum total image size per request (20MB) to prevent memory exhaustion
+const MAX_TOTAL_IMAGE_SIZE_BYTES = 20 * 1024 * 1024
+
 // Rate limit: 30 requests per minute per IP for chat API
 const CHAT_RATE_LIMIT_CONFIG = {
   limit: 30,
@@ -50,14 +56,18 @@ function getDataUrlMimeType(url: string): string | null {
   return match?.[1] ?? null
 }
 
-// Validate base64 data URL size to prevent DoS attacks
-function isDataUrlWithinSizeLimit(url: string): boolean {
+// Get estimated size of base64 data URL
+function getDataUrlSize(url: string): number {
   const base64Index = url.indexOf(';base64,')
-  if (base64Index === -1) return false
+  if (base64Index === -1) return 0
   const base64Data = url.slice(base64Index + 8)
   // base64 encodes 3 bytes into 4 characters
-  const estimatedSize = (base64Data.length * 3) / 4
-  return estimatedSize <= MAX_IMAGE_SIZE_BYTES
+  return (base64Data.length * 3) / 4
+}
+
+// Validate base64 data URL size to prevent DoS attacks
+function isDataUrlWithinSizeLimit(url: string): boolean {
+  return getDataUrlSize(url) <= MAX_IMAGE_SIZE_BYTES
 }
 
 // Allowed message roles (system role is NOT allowed from client to prevent prompt injection)
@@ -214,11 +224,29 @@ export async function POST(req: Request) {
 
         // Add images from experimental_attachments with validation
         const attachments = message.experimental_attachments ?? []
+        
+        // Validate image count and total size to prevent DoS
+        let imageCount = 0
+        let totalImageSize = 0
+        
         for (const attachment of attachments) {
           // Validate data URL format, size limit, and MIME type (don't trust client contentType)
           if (isValidImageDataUrl(attachment.url) && isDataUrlWithinSizeLimit(attachment.url)) {
             const actualMimeType = getDataUrlMimeType(attachment.url)
             if (actualMimeType && ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
+              // Check image count and total size limits
+              const imageSize = getDataUrlSize(attachment.url)
+              if (imageCount >= MAX_IMAGES_PER_MESSAGE) {
+                // Skip excess images (silent limit)
+                continue
+              }
+              if (totalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) {
+                // Skip if total size would exceed limit
+                continue
+              }
+              
+              imageCount++
+              totalImageSize += imageSize
               parts.push({ type: 'image', image: attachment.url })
             }
           }
