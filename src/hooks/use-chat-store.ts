@@ -74,13 +74,30 @@ export const useChatStore = create<ChatState & ChatActions>()(
       deleteConversation: (id) => {
         set((state) => {
           const newConversations = state.conversations.filter((c) => c.id !== id)
-          const newCurrentId =
-            state.currentConversationId === id
-              ? newConversations[0]?.id ?? null
-              : state.currentConversationId
+          // Check if we need to switch to a different conversation
+          if (state.currentConversationId === id) {
+            const newCurrentConversation = newConversations[0] ?? null
+            if (newCurrentConversation) {
+              // Switch to another conversation - also sync model selection
+              return {
+                conversations: newConversations,
+                currentConversationId: newCurrentConversation.id,
+                selectedModelId: newCurrentConversation.modelId,
+                selectedProvider: newCurrentConversation.provider,
+              }
+            } else {
+              // No conversations left - reset to default model
+              return {
+                conversations: newConversations,
+                currentConversationId: null,
+                selectedModelId: defaultModel.id,
+                selectedProvider: defaultModel.provider,
+              }
+            }
+          }
+          // Deleting a non-current conversation - just remove it
           return {
             conversations: newConversations,
-            currentConversationId: newCurrentId,
           }
         })
       },
