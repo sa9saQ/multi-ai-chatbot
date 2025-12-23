@@ -38,6 +38,7 @@ const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_IMAGES_PER_MESSAGE = 5
 
 // Maximum total image size per request (20MB) to prevent memory exhaustion
+// NOTE: These limits are enforced across ALL messages in a request
 const MAX_TOTAL_IMAGE_SIZE_BYTES = 20 * 1024 * 1024
 
 // Rate limit: 30 requests per minute per IP for chat API
@@ -65,10 +66,6 @@ function getDataUrlSize(url: string): number {
   return (base64Data.length * 3) / 4
 }
 
-// Validate base64 data URL size to prevent DoS attacks
-function isDataUrlWithinSizeLimit(url: string): boolean {
-  return getDataUrlSize(url) <= MAX_IMAGE_SIZE_BYTES
-}
 
 // Allowed message roles (system role is NOT allowed from client to prevent prompt injection)
 const ALLOWED_ROLES = ['user', 'assistant'] as const
@@ -210,6 +207,10 @@ export async function POST(req: Request) {
     }
 
     // Process messages to handle multimodal content (experimental_attachments)
+    // Track image count and size across ALL messages in the request (DoS prevention)
+    let requestImageCount = 0
+    let requestTotalImageSize = 0
+
     const processedMessages: CoreMessage[] = validatedMessages.map((message) => {
       const hasMessageAttachments = message.experimental_attachments && message.experimental_attachments.length > 0
 
@@ -225,31 +226,28 @@ export async function POST(req: Request) {
         // Add images from experimental_attachments with validation
         const attachments = message.experimental_attachments ?? []
         
-        // Validate image count and total size to prevent DoS
-        let imageCount = 0
-        let totalImageSize = 0
-        
         for (const attachment of attachments) {
-          // Validate data URL format, size limit, and MIME type (don't trust client contentType)
-          if (isValidImageDataUrl(attachment.url) && isDataUrlWithinSizeLimit(attachment.url)) {
-            const actualMimeType = getDataUrlMimeType(attachment.url)
-            if (actualMimeType && ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
-              // Check image count and total size limits
-              const imageSize = getDataUrlSize(attachment.url)
-              if (imageCount >= MAX_IMAGES_PER_MESSAGE) {
-                // Skip excess images (silent limit)
-                continue
-              }
-              if (totalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) {
-                // Skip if total size would exceed limit
-                continue
-              }
-              
-              imageCount++
-              totalImageSize += imageSize
-              parts.push({ type: 'image', image: attachment.url })
-            }
-          }
+          // Validate data URL format first
+          if (!isValidImageDataUrl(attachment.url)) continue
+          
+          // Calculate size once for efficiency
+          const imageSize = getDataUrlSize(attachment.url)
+          
+          // Check individual image size limit
+          if (imageSize > MAX_IMAGE_SIZE_BYTES) continue
+          
+          // Check request-level limits
+          if (requestImageCount >= MAX_IMAGES_PER_MESSAGE) continue
+          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) continue
+          
+          // Validate MIME type (don't trust client contentType)
+          const actualMimeType = getDataUrlMimeType(attachment.url)
+          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) continue
+          
+          // All checks passed - add the image
+          requestImageCount++
+          requestTotalImageSize += imageSize
+          parts.push({ type: 'image', image: attachment.url })
         }
 
         // Fallback: if all attachments failed validation and no text, add empty text part
@@ -274,24 +272,40 @@ export async function POST(req: Request) {
       }
 
       // Already multimodal content - sanitize text parts and validate image parts
-      const sanitizedContent = message.content
-        .map((part) => {
-          if (part.type === 'text') {
-            return { ...part, text: sanitizeInput(part.text) }
-          }
-          // Validate image parts with same rules as attachments (format, size, MIME type)
-          if (part.type === 'image') {
-            if (!isValidImageDataUrl(part.image) || !isDataUrlWithinSizeLimit(part.image)) {
-              return null // Skip invalid or oversized data URLs
-            }
-            const actualMimeType = getDataUrlMimeType(part.image)
-            if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
-              return null // Skip disallowed MIME types
-            }
-          }
-          return part
-        })
-        .filter((part): part is ContentPart => part !== null)
+      // Apply same request-level limits as experimental_attachments path
+      const sanitizedContent: ContentPart[] = []
+      
+      for (const part of message.content) {
+        if (part.type === 'text') {
+          sanitizedContent.push({ ...part, text: sanitizeInput(part.text) })
+          continue
+        }
+        
+        // Validate image parts with same rules as attachments
+        if (part.type === 'image') {
+          // Validate data URL format first
+          if (!isValidImageDataUrl(part.image)) continue
+          
+          // Calculate size once for efficiency
+          const imageSize = getDataUrlSize(part.image)
+          
+          // Check individual image size limit
+          if (imageSize > MAX_IMAGE_SIZE_BYTES) continue
+          
+          // Check request-level limits (shared with experimental_attachments)
+          if (requestImageCount >= MAX_IMAGES_PER_MESSAGE) continue
+          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) continue
+          
+          // Validate MIME type
+          const actualMimeType = getDataUrlMimeType(part.image)
+          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) continue
+          
+          // All checks passed - add the image
+          requestImageCount++
+          requestTotalImageSize += imageSize
+          sanitizedContent.push(part)
+        }
+      }
 
       // Fallback: if all parts got filtered out, add empty text part
       // AI SDK may error on empty content array
