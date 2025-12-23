@@ -36,21 +36,28 @@ export function sanitizeInput(input: string): string {
     sanitized = sanitized.slice(0, MAX_MESSAGE_LENGTH)
   }
 
+  // Remove invisible characters that could be used for bypass attacks
   sanitized = sanitized
-    .replace(/\u0000/g, '')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u0000/g, '')                     // Null bytes
+    .replace(/[\u00AD]/g, '')                   // Soft hyphen
+    .replace(/[\u200B-\u200F]/g, '')            // Zero-width chars + LTR/RTL marks
+    .replace(/[\u2060-\u2064]/g, '')            // Word joiner + invisible operators
+    .replace(/[\uFEFF]/g, '')                   // BOM / zero-width no-break space
 
   return sanitized
 }
 
 export function containsDangerousPatterns(input: string): boolean {
-  // Normalize input by removing zero-width characters before checking
+  // Normalize input by removing invisible characters before checking
   // This prevents bypass attacks like "igno\u200Bre all previous instructions"
   // which would not match the pattern but becomes "ignore all previous instructions" after sanitization
   // IMPORTANT: Do NOT remove regular spaces - patterns require whitespace to match (e.g., \s+)
   const normalized = input
     .replace(/\u0000/g, '')                 // Null bytes
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')  // Zero-width characters only
+    .replace(/[\u00AD]/g, '')               // Soft hyphen
+    .replace(/[\u200B-\u200F]/g, '')        // Zero-width chars + LTR/RTL marks
+    .replace(/[\u2060-\u2064]/g, '')        // Word joiner + invisible operators
+    .replace(/[\uFEFF]/g, '')               // BOM / zero-width no-break space
   return DANGEROUS_PATTERNS.some((pattern) => pattern.test(normalized))
 }
 

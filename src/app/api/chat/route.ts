@@ -1,4 +1,4 @@
-import { streamText, APICallError, type CoreMessage } from 'ai'
+import { streamText, APICallError, StreamData, type CoreMessage, type JSONValue } from 'ai'
 import { getLanguageModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
 import { AI_MODELS, type AIProvider } from '@/types/ai'
@@ -34,12 +34,32 @@ const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'
 // Maximum image size (10MB) - must match client-side limit for consistency
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
 
-// Maximum number of images per message to prevent DoS
-const MAX_IMAGES_PER_MESSAGE = 5
+// Maximum number of images per request to prevent DoS
+const MAX_IMAGES_PER_REQUEST = 5
 
 // Maximum total image size per request (20MB) to prevent memory exhaustion
 // NOTE: These limits are enforced across ALL messages in a request
 const MAX_TOTAL_IMAGE_SIZE_BYTES = 20 * 1024 * 1024
+
+type ImageRejectionReason =
+  | 'invalid_data_url'
+  | 'image_too_large'
+  | 'max_images_per_request_exceeded'
+  | 'max_total_image_size_exceeded'
+  | 'unsupported_mime_type'
+
+type ImageRejectionSource = 'attachment' | 'content'
+
+interface ImageRejection {
+  messageIndex: number
+  source: ImageRejectionSource
+  reason: ImageRejectionReason
+  attachmentName?: string
+  attachmentIndex?: number
+  partIndex?: number
+  mimeType?: string | null
+  sizeBytes?: number
+}
 
 // Rate limit: 30 requests per minute per IP for chat API
 const CHAT_RATE_LIMIT_CONFIG = {
@@ -61,9 +81,12 @@ function getDataUrlMimeType(url: string): string | null {
 function getDataUrlSize(url: string): number {
   const base64Index = url.indexOf(';base64,')
   if (base64Index === -1) return 0
-  const base64Data = url.slice(base64Index + 8)
-  // base64 encodes 3 bytes into 4 characters
-  return (base64Data.length * 3) / 4
+  const base64Data = url.slice(base64Index + 8).replace(/\s/g, '')
+  const paddingMatch = base64Data.match(/=+$/)
+  const paddingCount = paddingMatch ? paddingMatch[0].length : 0
+  const effectiveLength = base64Data.length
+  // base64 encodes 3 bytes into 4 characters; adjust for trailing padding
+  return (effectiveLength * 3) / 4 - paddingCount
 }
 
 
@@ -210,8 +233,9 @@ export async function POST(req: Request) {
     // Track image count and size across ALL messages in the request (DoS prevention)
     let requestImageCount = 0
     let requestTotalImageSize = 0
+    const imageRejections: ImageRejection[] = []
 
-    const processedMessages: CoreMessage[] = validatedMessages.map((message) => {
+    const processedMessages: CoreMessage[] = validatedMessages.map((message, messageIndex) => {
       const hasMessageAttachments = message.experimental_attachments && message.experimental_attachments.length > 0
 
       // If message has attachments, create multimodal content
@@ -226,23 +250,63 @@ export async function POST(req: Request) {
         // Add images from experimental_attachments with validation
         const attachments = message.experimental_attachments ?? []
         
-        for (const attachment of attachments) {
+        for (const [attachmentIndex, attachment] of attachments.entries()) {
+          const rejectionBase = {
+            messageIndex,
+            source: 'attachment' as const,
+            attachmentName: attachment.name,
+            attachmentIndex,
+          }
+
           // Validate data URL format first
-          if (!isValidImageDataUrl(attachment.url)) continue
+          if (!isValidImageDataUrl(attachment.url)) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'invalid_data_url',
+            })
+            continue
+          }
           
           // Calculate size once for efficiency
           const imageSize = getDataUrlSize(attachment.url)
           
           // Check individual image size limit
-          if (imageSize > MAX_IMAGE_SIZE_BYTES) continue
+          if (imageSize > MAX_IMAGE_SIZE_BYTES) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'image_too_large',
+              sizeBytes: imageSize,
+            })
+            continue
+          }
           
           // Check request-level limits
-          if (requestImageCount >= MAX_IMAGES_PER_MESSAGE) continue
-          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) continue
+          if (requestImageCount >= MAX_IMAGES_PER_REQUEST) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'max_images_per_request_exceeded',
+            })
+            continue
+          }
+          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'max_total_image_size_exceeded',
+              sizeBytes: imageSize,
+            })
+            continue
+          }
           
           // Validate MIME type (don't trust client contentType)
           const actualMimeType = getDataUrlMimeType(attachment.url)
-          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) continue
+          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'unsupported_mime_type',
+              mimeType: actualMimeType,
+            })
+            continue
+          }
           
           // All checks passed - add the image
           requestImageCount++
@@ -275,7 +339,7 @@ export async function POST(req: Request) {
       // Apply same request-level limits as experimental_attachments path
       const sanitizedContent: ContentPart[] = []
       
-      for (const part of message.content) {
+      for (const [partIndex, part] of message.content.entries()) {
         if (part.type === 'text') {
           sanitizedContent.push({ ...part, text: sanitizeInput(part.text) })
           continue
@@ -283,22 +347,61 @@ export async function POST(req: Request) {
         
         // Validate image parts with same rules as attachments
         if (part.type === 'image') {
+          const rejectionBase = {
+            messageIndex,
+            source: 'content' as const,
+            partIndex,
+          }
+
           // Validate data URL format first
-          if (!isValidImageDataUrl(part.image)) continue
+          if (!isValidImageDataUrl(part.image)) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'invalid_data_url',
+            })
+            continue
+          }
           
           // Calculate size once for efficiency
           const imageSize = getDataUrlSize(part.image)
           
           // Check individual image size limit
-          if (imageSize > MAX_IMAGE_SIZE_BYTES) continue
+          if (imageSize > MAX_IMAGE_SIZE_BYTES) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'image_too_large',
+              sizeBytes: imageSize,
+            })
+            continue
+          }
           
           // Check request-level limits (shared with experimental_attachments)
-          if (requestImageCount >= MAX_IMAGES_PER_MESSAGE) continue
-          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) continue
+          if (requestImageCount >= MAX_IMAGES_PER_REQUEST) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'max_images_per_request_exceeded',
+            })
+            continue
+          }
+          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'max_total_image_size_exceeded',
+              sizeBytes: imageSize,
+            })
+            continue
+          }
           
           // Validate MIME type
           const actualMimeType = getDataUrlMimeType(part.image)
-          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) continue
+          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
+            imageRejections.push({
+              ...rejectionBase,
+              reason: 'unsupported_mime_type',
+              mimeType: actualMimeType,
+            })
+            continue
+          }
           
           // All checks passed - add the image
           requestImageCount++
@@ -320,13 +423,29 @@ export async function POST(req: Request) {
     })
 
     const model = getLanguageModel(provider, modelId, apiKey)
+    const data = new StreamData()
+
+    if (imageRejections.length > 0) {
+      const serializableRejections = imageRejections.map((rejection) => ({
+        messageIndex: rejection.messageIndex,
+        source: rejection.source,
+        reason: rejection.reason,
+        attachmentName: rejection.attachmentName ?? null,
+        attachmentIndex: rejection.attachmentIndex ?? null,
+        partIndex: rejection.partIndex ?? null,
+        mimeType: rejection.mimeType ?? null,
+        sizeBytes: rejection.sizeBytes ?? null,
+      }))
+
+      data.append({ imageRejections: serializableRejections } as JSONValue)
+    }
 
     const result = streamText({
       model,
       messages: processedMessages,
     })
 
-    return result.toDataStreamResponse()
+    return result.toDataStreamResponse({ data })
   } catch (error) {
 
     // Use APICallError.isInstance() for type-safe error handling
