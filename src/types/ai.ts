@@ -2,6 +2,9 @@ export type AIProvider = 'openai' | 'anthropic' | 'google'
 
 export type ModelTier = 'default' | 'premium' | 'reasoning'
 
+// Thinking/reasoning effort levels for models that support extended thinking
+export type ThinkingLevel = 'low' | 'medium' | 'high'
+
 export interface AIModel {
   id: string
   name: string
@@ -15,6 +18,9 @@ export interface AIModel {
     output: number // $ per 1M tokens
   }
   supportsVision?: boolean // Can process images
+  supportsThinking?: boolean // Supports extended thinking/reasoning
+  thinkingLevels?: ThinkingLevel[] // Available thinking effort levels
+  supportsWebSearch?: boolean // Supports web search/grounding
 }
 
 export const AI_PROVIDERS: Record<AIProvider, { name: string; icon: string }> = {
@@ -39,6 +45,9 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 200000,
     pricing: { input: 10.0, output: 40.0 },
     supportsVision: true,
+    supportsThinking: true,
+    thinkingLevels: ['low', 'medium', 'high'],
+    supportsWebSearch: true,
   },
 
   // o4-mini - Apr 2025
@@ -52,6 +61,9 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 200000,
     pricing: { input: 1.1, output: 4.4 },
     supportsVision: true,
+    supportsThinking: true,
+    thinkingLevels: ['low', 'medium', 'high'],
+    supportsWebSearch: true,
   },
 
   // GPT-5 Mini - Aug 2025
@@ -65,6 +77,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 200000,
     pricing: { input: 0.4, output: 1.6 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // GPT-5.2 - Dec 11, 2025
@@ -78,6 +91,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 400000,
     pricing: { input: 1.75, output: 14.0 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // GPT-5.2 Pro - Dec 11, 2025
@@ -91,6 +105,9 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 400000,
     pricing: { input: 15.0, output: 60.0 },
     supportsVision: true,
+    supportsThinking: true,
+    thinkingLevels: ['low', 'medium', 'high'],
+    supportsWebSearch: true,
   },
 
   // ============================================
@@ -108,6 +125,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 200000,
     pricing: { input: 0.8, output: 4.0 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // Claude Sonnet 4.5 - Sep 29, 2025
@@ -121,6 +139,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 200000,
     pricing: { input: 3.0, output: 15.0 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // Claude Opus 4.5 - Nov 1, 2025
@@ -134,6 +153,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 200000,
     pricing: { input: 15.0, output: 75.0 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // ============================================
@@ -151,6 +171,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 1000000,
     pricing: { input: 0.075, output: 0.3 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // Gemini 2.5 Pro - Jun 2025
@@ -164,6 +185,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 1000000,
     pricing: { input: 1.25, output: 5.0 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // Gemini 3 Flash - Dec 17, 2025
@@ -177,6 +199,7 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 1000000,
     pricing: { input: 0.5, output: 3.0 },
     supportsVision: true,
+    supportsWebSearch: true,
   },
 
   // Gemini 3 Pro - Dec 17, 2025
@@ -190,6 +213,9 @@ export const AI_MODELS: AIModel[] = [
     contextWindow: 1000000,
     pricing: { input: 2.5, output: 10.0 },
     supportsVision: true,
+    supportsThinking: true,
+    supportsWebSearch: true,
+    // Gemini models use native thinking without configurable levels
   },
 ]
 
@@ -219,4 +245,26 @@ export function getModelsByStrength(strength: string): AIModel[] {
 // Get models that support vision/image input
 export function getVisionModels(): AIModel[] {
   return AI_MODELS.filter((model) => model.supportsVision)
+}
+
+// Get models that support extended thinking/reasoning
+export function getThinkingModels(): AIModel[] {
+  return AI_MODELS.filter((model) => model.supportsThinking)
+}
+
+// Check if a model supports configurable thinking levels
+export function hasConfigurableThinking(modelId: string): boolean {
+  const model = getModelById(modelId)
+  return model?.supportsThinking === true && (model?.thinkingLevels?.length ?? 0) > 0
+}
+
+// Get models that support web search
+export function getWebSearchModels(): AIModel[] {
+  return AI_MODELS.filter((model) => model.supportsWebSearch)
+}
+
+// Check if a model supports web search
+export function supportsWebSearch(modelId: string): boolean {
+  const model = getModelById(modelId)
+  return model?.supportsWebSearch === true
 }

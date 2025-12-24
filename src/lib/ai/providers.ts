@@ -26,7 +26,79 @@ export function createAIProvider(provider: AIProvider, apiKey: string) {
   }
 }
 
-export function getLanguageModel(provider: AIProvider, modelId: string, apiKey: string) {
+// OpenAI reasoning models that require .responses() method
+// These models use extended thinking and need special handling
+const OPENAI_REASONING_MODELS = [
+  'o1',
+  'o1-mini',
+  'o1-pro',
+  'o3',
+  'o3-mini',
+  'o3-pro',
+  'o4-mini',
+  'gpt-5.2-pro',
+]
+
+function isOpenAIReasoningModel(modelId: string): boolean {
+  return OPENAI_REASONING_MODELS.some(
+    (rm) => modelId === rm || modelId.startsWith(`${rm}-`)
+  )
+}
+
+export interface LanguageModelOptions {
+  webSearchEnabled?: boolean
+}
+
+export function getLanguageModel(
+  provider: AIProvider,
+  modelId: string,
+  apiKey: string,
+  _options: LanguageModelOptions = {}
+) {
+  // Note: webSearchEnabled is now handled via tools in getWebSearchTools()
+  // Google search grounding is also done via google.tools.googleSearch()
+
+  // Use .responses() for OpenAI reasoning models (o-series, gpt-5.2-pro)
+  // These models require special response handling for extended thinking
+  if (provider === 'openai' && isOpenAIReasoningModel(modelId)) {
+    const openaiProvider = createOpenAI({ apiKey })
+    return openaiProvider.responses(modelId)
+  }
+
   const aiProvider = createAIProvider(provider, apiKey)
   return aiProvider(modelId)
+}
+
+// Get web search tools for providers that use tools-based search
+// All providers now use tool-based approach in AI SDK v6
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getWebSearchTools(provider: AIProvider, apiKey: string): any {
+  if (provider === 'openai') {
+    const openaiProvider = createOpenAI({ apiKey })
+    return {
+      web_search: openaiProvider.tools.webSearchPreview({
+        searchContextSize: 'medium',
+      }),
+    }
+  }
+
+  if (provider === 'anthropic') {
+    // Anthropic uses provider-defined tool for web search
+    const anthropicProvider = createAnthropic({ apiKey })
+    return {
+      web_search: anthropicProvider.tools.webSearch_20250305({
+        maxUses: 5,
+      }),
+    }
+  }
+
+  if (provider === 'google') {
+    // Google uses googleSearch tool for search grounding (replaces useSearchGrounding)
+    const googleProvider = createGoogleGenerativeAI({ apiKey })
+    return {
+      google_search: googleProvider.tools.googleSearch({}),
+    }
+  }
+
+  return undefined
 }

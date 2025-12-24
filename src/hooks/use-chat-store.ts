@@ -3,8 +3,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Conversation, ConversationSummary, Message } from '@/types/chat'
-import type { AIModel, AIProvider } from '@/types/ai'
-import { AI_MODELS, getModelById } from '@/types/ai'
+import type { AIModel, AIProvider, ThinkingLevel } from '@/types/ai'
+import { AI_MODELS, getModelById, hasConfigurableThinking, supportsWebSearch } from '@/types/ai'
 import { DEFAULT_SETTINGS } from '@/types/settings'
 import { useSettingsStore } from './use-settings-store'
 
@@ -13,6 +13,8 @@ interface ChatState {
   currentConversationId: string | null
   selectedModelId: string
   selectedProvider: AIProvider
+  thinkingLevel: ThinkingLevel
+  webSearchEnabled: boolean
   isGenerating: boolean
 }
 
@@ -24,6 +26,8 @@ interface ChatActions {
   addMessage: (conversationId: string, message: Omit<Message, 'id' | 'createdAt'>) => void
   updateMessage: (conversationId: string, messageId: string, content: string) => void
   setSelectedModel: (modelId: string, provider: AIProvider) => void
+  setThinkingLevel: (level: ThinkingLevel) => void
+  setWebSearchEnabled: (enabled: boolean) => void
   setIsGenerating: (isGenerating: boolean) => void
   getConversationSummaries: () => ConversationSummary[]
   getCurrentConversation: () => Conversation | null
@@ -42,6 +46,8 @@ export const useChatStore = create<ChatState & ChatActions>()(
       currentConversationId: null,
       selectedModelId: defaultModel.id,
       selectedProvider: defaultModel.provider,
+      thinkingLevel: 'medium' as ThinkingLevel, // Default thinking level
+      webSearchEnabled: false, // Web search disabled by default
       isGenerating: false,
 
       createConversation: () => {
@@ -169,6 +175,22 @@ export const useChatStore = create<ChatState & ChatActions>()(
             ),
           }))
         }
+        // Reset thinking level to medium if new model doesn't support configurable thinking
+        if (!hasConfigurableThinking(modelId)) {
+          set({ thinkingLevel: 'medium' })
+        }
+        // Reset web search if new model doesn't support it
+        if (!supportsWebSearch(modelId)) {
+          set({ webSearchEnabled: false })
+        }
+      },
+
+      setThinkingLevel: (level) => {
+        set({ thinkingLevel: level })
+      },
+
+      setWebSearchEnabled: (enabled) => {
+        set({ webSearchEnabled: enabled })
       },
 
       setIsGenerating: (isGenerating) => {
@@ -208,10 +230,21 @@ export const useChatStore = create<ChatState & ChatActions>()(
       name: 'multi-ai-chat-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        conversations: state.conversations,
+        // Exclude images from localStorage to avoid QuotaExceededError
+        // Base64 images are too large for localStorage's 5MB limit
+        // Images are only kept in memory during the session
+        conversations: state.conversations.map((conv) => ({
+          ...conv,
+          messages: conv.messages.map((m) => ({
+            ...m,
+            images: undefined, // Don't persist images to localStorage
+          })),
+        })),
         currentConversationId: state.currentConversationId,
         selectedModelId: state.selectedModelId,
         selectedProvider: state.selectedProvider,
+        thinkingLevel: state.thinkingLevel,
+        webSearchEnabled: state.webSearchEnabled,
       }),
       onRehydrateStorage: () => (state) => {
         // Restore Date objects from ISO strings after rehydration

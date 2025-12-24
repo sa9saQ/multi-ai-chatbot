@@ -5,12 +5,14 @@ import { useChat } from '@ai-sdk/react'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { ModelSelector } from './model-selector'
+import { ThinkingLevelSelector } from './thinking-level-selector'
+import { WebSearchToggle } from './web-search-toggle'
 import { MessageList } from './message-list'
 import { ChatInput } from './chat-input'
 import { ExportMenu } from '@/components/export'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { useSettingsStore } from '@/hooks/use-settings-store'
-import { getModelById } from '@/types/ai'
+import { getModelById, type ThinkingLevel } from '@/types/ai'
 import type { Message, MessageRole } from '@/types/chat'
 
 // Type guard for supported message roles
@@ -33,6 +35,8 @@ export function ChatArea() {
     currentConversationId,
     selectedModelId,
     selectedProvider,
+    thinkingLevel,
+    webSearchEnabled,
     addMessage,
     setIsGenerating,
     createConversation,
@@ -85,7 +89,19 @@ export function ChatArea() {
 
   // Store request context for onFinish callback (only one active request at a time due to isLoading guard)
   // This ref is set before calling append() and read in onFinish to save the message to the correct conversation
-  const pendingContextRef = React.useRef<{ convId: string; modelId: string } | null>(null)
+  // Includes timing data for thinking models
+  const pendingContextRef = React.useRef<{
+    convId: string
+    modelId: string
+    startTime: number // Date.now() when thinking started
+    thinkingLevel: ThinkingLevel
+    isThinkingModel: boolean
+  } | null>(null)
+
+  // Flag to skip message sync during handleSubmit flow
+  // Prevents race condition: createConversation triggers useEffect which would load
+  // the user message we just added, then append() adds it again → double message
+  const skipSyncRef = React.useRef(false)
 
   const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
@@ -94,6 +110,8 @@ export function ChatArea() {
       modelId: selectedModelId,
       provider: selectedProvider,
       apiKey,
+      thinkingLevel,
+      webSearchEnabled,
     },
     // Force re-initialization when model/provider changes
     id: `${selectedProvider}-${selectedModelId}`,
@@ -110,10 +128,19 @@ export function ChatArea() {
       // This avoids stale closure issues since onFinish is called with the correct message
       const context = pendingContextRef.current
       if (context) {
+        // Calculate thinking time for reasoning models
+        const thinkingTime = context.isThinkingModel
+          ? Math.round((Date.now() - context.startTime) / 1000)
+          : undefined
         addMessage(context.convId, {
           role: 'assistant',
           content: message.content,
           modelId: context.modelId,
+          // Include thinking metadata for reasoning models
+          ...(context.isThinkingModel && {
+            thinkingTime,
+            thinkingLevel: context.thinkingLevel,
+          }),
         })
         pendingContextRef.current = null
       }
@@ -128,6 +155,11 @@ export function ChatArea() {
 
   // Sync messages when switching conversations OR when model changes (due to id change in useChat)
   React.useEffect(() => {
+    // Skip sync during handleSubmit flow to prevent double message
+    // (createConversation triggers this effect, but we're about to append the message manually)
+    if (skipSyncRef.current) {
+      return
+    }
     // Get fresh conversation state from store (not from reactive selector)
     const { conversations, currentConversationId: convId } = useChatStore.getState()
     const conv = conversations.find((c) => c.id === convId) ?? null
@@ -168,6 +200,9 @@ export function ChatArea() {
     let effectiveProvider = selectedProvider
     let effectiveApiKey = apiKey
     if (!convId) {
+      // Set flag to skip message sync - prevents double message from useEffect
+      // The effect would run due to currentConversationId change, but we'll manually append
+      skipSyncRef.current = true
       convId = createConversation()
       // Get fresh state after conversation creation (it updates selectedModelId/selectedProvider)
       const freshState = useChatStore.getState()
@@ -178,12 +213,14 @@ export function ChatArea() {
       // we need to fetch the correct API key for the new provider
       if (effectiveProvider !== selectedProvider) {
         if (!hasApiKey(effectiveProvider)) {
+          skipSyncRef.current = false // Clear flag on early return
           toast.error(t('apiKeyMissing'))
           return
         }
         // Fetch API key for the effective provider
         const newApiKey = await getApiKey(effectiveProvider)
         if (!newApiKey) {
+          skipSyncRef.current = false // Clear flag on early return
           toast.error(t('apiKeyLoading'))
           return
         }
@@ -202,9 +239,11 @@ export function ChatArea() {
       : userMessage
 
     // Save user message to store (same content as sent to API for consistency)
+    // Include images so they can be displayed in the chat history
     addMessage(convId, {
       role: 'user',
       content: messageContent || (imagesToSend.length > 0 ? t('describeImage') : ''),
+      images: imagesToSend.length > 0 ? imagesToSend : undefined,
     })
 
     // Clear inputs
@@ -224,7 +263,15 @@ export function ChatArea() {
 
     // Store context for onFinish callback before starting the request
     // This avoids stale closure issues - onFinish reads from this ref
-    pendingContextRef.current = { convId, modelId: effectiveModelId }
+    // Include timing data for calculating thinking time in reasoning models
+    const effectiveModel = getModelById(effectiveModelId)
+    pendingContextRef.current = {
+      convId,
+      modelId: effectiveModelId,
+      startTime: Date.now(),
+      thinkingLevel,
+      isThinkingModel: effectiveModel?.supportsThinking ?? false,
+    }
     setIsGenerating(true)
     try {
       await append(
@@ -238,6 +285,8 @@ export function ChatArea() {
             modelId: effectiveModelId,
             provider: effectiveProvider,
             apiKey: effectiveApiKey,
+            thinkingLevel,
+            webSearchEnabled,
           },
         }
       )
@@ -250,24 +299,68 @@ export function ChatArea() {
       setIsGenerating(false)
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(errorMessage || t('errorOccurred'), { id: 'chat-error' })
+    } finally {
+      // Clear skip flag after append completes (success or failure)
+      // This allows future conversation switches to sync messages normally
+      skipSyncRef.current = false
     }
   }
 
   const displayMessages: Message[] = React.useMemo(() => {
+    // Merge AI SDK messages with stored metadata from conversation
+    // AI SDK doesn't persist images or thinking metadata, so we retrieve them from our store
+    // Note: useChat generates different IDs than our store, so we match by content+role
+    const storedMessages = conversation?.messages ?? []
+
+    // Create a map keyed by content+role for matching (handles ID mismatch)
+    // For user messages with images, content is the same as what we saved
+    type StoredMetadata = {
+      images?: string[]
+      thinkingTime?: number
+      thinkingLevel?: ThinkingLevel
+    }
+    const storedMetadataMap = new Map<string, StoredMetadata>()
+    for (const m of storedMessages) {
+      // Use content+role as key since IDs differ between useChat and store
+      const key = `${m.role}:${m.content}`
+      const metadata: StoredMetadata = {}
+      if (m.images && m.images.length > 0) {
+        metadata.images = m.images
+      }
+      if (m.thinkingTime !== undefined) {
+        metadata.thinkingTime = m.thinkingTime
+        metadata.thinkingLevel = m.thinkingLevel
+      }
+      if (Object.keys(metadata).length > 0) {
+        storedMetadataMap.set(key, metadata)
+      }
+    }
+
     return messages
       .filter((m) => isSupportedRole(m.role))
-      .map((m) => ({
-        id: m.id,
-        role: m.role as MessageRole,
-        content: m.content,
-        createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
-      }))
-  }, [messages])
+      .map((m) => {
+        const key = `${m.role}:${m.content}`
+        const metadata = storedMetadataMap.get(key)
+        return {
+          id: m.id,
+          role: m.role as MessageRole,
+          content: m.content,
+          createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+          images: metadata?.images,
+          thinkingTime: metadata?.thinkingTime,
+          thinkingLevel: metadata?.thinkingLevel,
+        }
+      })
+  }, [messages, conversation?.messages])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b p-2">
-        <ModelSelector />
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b p-2">
+        <div className="flex items-center gap-2">
+          <ModelSelector />
+          <ThinkingLevelSelector />
+          <WebSearchToggle />
+        </div>
         {conversation && <ExportMenu conversation={conversation} disabled={isLoading} />}
       </div>
 

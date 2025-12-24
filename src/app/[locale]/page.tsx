@@ -14,7 +14,7 @@ export default function HomePage() {
       <Header onMenuClick={() => setMobileNavOpen(true)} showMenuButton />
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar className="hidden md:flex" />
+        <Sidebar className="desktop-sidebar h-full" />
 
         <main className="flex flex-1 flex-col overflow-hidden">
           <ChatArea />
