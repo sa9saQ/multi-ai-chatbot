@@ -102,6 +102,8 @@ export function ChatArea() {
   // Prevents race condition: createConversation triggers useEffect which would load
   // the user message we just added, then append() adds it again → double message
   const skipSyncRef = React.useRef(false)
+  // Counter to trigger re-sync after skipSyncRef is cleared (handles navigation during request)
+  const [syncTrigger, setSyncTrigger] = React.useState(0)
 
   const { messages, append, status, setMessages } = useChat({
     api: '/api/chat',
@@ -173,7 +175,7 @@ export function ChatArea() {
           createdAt: m.createdAt,
         })) ?? []
     setMessages(newMessages)
-  }, [currentConversationId, selectedModelId, selectedProvider, setMessages])
+  }, [currentConversationId, selectedModelId, selectedProvider, setMessages, syncTrigger])
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
@@ -308,6 +310,8 @@ export function ChatArea() {
       // This allows future conversation switches to sync messages normally
       // Outer finally ensures cleanup even if errors occur before inner try
       skipSyncRef.current = false
+      // Trigger re-sync in case navigation occurred while flag was set
+      setSyncTrigger((prev) => prev + 1)
     }
   }
 
@@ -318,21 +322,31 @@ export function ChatArea() {
     // (content+role matching fails with duplicate messages)
     const storedMessages = conversation?.messages ?? []
 
-    return messages
-      .filter((m) => isSupportedRole(m.role))
-      .map((m, index) => {
-        // Match by index - storedMessages and messages should be in sync
-        const storedMessage = storedMessages[index]
-        return {
-          id: m.id,
-          role: m.role as MessageRole,
-          content: m.content,
-          createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
-          images: storedMessage?.images,
-          thinkingTime: storedMessage?.thinkingTime,
-          thinkingLevel: storedMessage?.thinkingLevel,
-        }
-      })
+    // Filter out tool invocation messages (web search intermediate steps)
+    // These are assistant messages that contain tool calls but aren't saved to our store
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filteredMessages = messages.filter((m: any) => {
+      // Keep only user/assistant roles
+      if (!isSupportedRole(m.role)) return false
+      // Filter out messages with tool invocations (intermediate tool call messages)
+      // These are created by AI SDK for web search but we only save final responses
+      if (m.toolInvocations && m.toolInvocations.length > 0) return false
+      return true
+    })
+
+    return filteredMessages.map((m, index) => {
+      // Match by index - storedMessages and filteredMessages should be in sync
+      const storedMessage = storedMessages[index]
+      return {
+        id: m.id,
+        role: m.role as MessageRole,
+        content: m.content,
+        createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
+        images: storedMessage?.images,
+        thinkingTime: storedMessage?.thinkingTime,
+        thinkingLevel: storedMessage?.thinkingLevel,
+      }
+    })
   }, [messages, conversation?.messages])
 
   return (
