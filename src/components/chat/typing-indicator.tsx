@@ -123,6 +123,7 @@ export function ThinkingTimeDisplay({
     <button
       type="button"
       onClick={() => setIsExpanded(!isExpanded)}
+      aria-expanded={isExpanded}
       className={cn(
         'flex items-center gap-2 rounded-md bg-purple-50 px-3 py-1.5 text-sm transition-colors hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/50',
         className

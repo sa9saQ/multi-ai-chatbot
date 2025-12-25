@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena-mcp-server",
+        "--context",
+        "claude-code",
+        "--project",
+        "/mnt/c/Users/zsaku/projects/Portfolio/chatbot"
+      ],
+      "env": {}
+    }
+  }
+}

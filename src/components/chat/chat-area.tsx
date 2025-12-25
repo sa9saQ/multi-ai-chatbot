@@ -228,6 +228,9 @@ export function ChatArea() {
       }
     }
 
+    // Wrap in try-finally to ensure skipSyncRef is always cleared
+    // even if errors occur before the inner try block
+    try {
     // Build message content - capture images before clearing state
     const userMessage = inputValue
     const imagesToSend = [...attachedImages]
@@ -299,9 +302,11 @@ export function ChatArea() {
       setIsGenerating(false)
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(errorMessage || t('errorOccurred'), { id: 'chat-error' })
+    }
     } finally {
-      // Clear skip flag after append completes (success or failure)
+      // Clear skip flag after operation completes (success or failure)
       // This allows future conversation switches to sync messages normally
+      // Outer finally ensures cleanup even if errors occur before inner try
       skipSyncRef.current = false
     }
   }

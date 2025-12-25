@@ -1,0 +1,24 @@
+# language of the project (csharp, python, rust, java, typescript, go, cpp, or ruby)
+language: typescript
+
+# whether to use the project's gitignore file to ignore files
+ignore_all_files_in_gitignore: true
+
+# list of additional paths to ignore
+ignored_paths:
+  - node_modules
+  - .next
+  - dist
+  - build
+  - coverage
+
+# whether the project is in read-only mode
+read_only: false
+
+# list of tool names to exclude
+excluded_tools: []
+
+# initial prompt for the project
+initial_prompt: ""
+
+project_name: "chatbot"
