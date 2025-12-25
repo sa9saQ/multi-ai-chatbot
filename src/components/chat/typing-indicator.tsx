@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Brain, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/hooks/use-chat-store'
-import { getModelById, hasConfigurableThinking } from '@/types/ai'
+import { getModelById, hasConfigurableThinking, type ThinkingLevel } from '@/types/ai'
 
 interface TypingIndicatorProps {
   className?: string
@@ -14,7 +14,7 @@ interface TypingIndicatorProps {
 export function TypingIndicator({ className }: TypingIndicatorProps) {
   const t = useTranslations('chat')
   const tModel = useTranslations('model')
-  const { selectedModelId, thinkingLevel } = useChatStore()
+  const { selectedModelId, thinkingLevel, isGenerating } = useChatStore()
   const [seconds, setSeconds] = React.useState(0)
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -24,8 +24,9 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
   const showThinkingLevel = hasConfigurableThinking(selectedModelId)
 
   // Seconds counter for thinking models
+  // Reset counter when isGenerating changes to handle consecutive generations
   React.useEffect(() => {
-    if (isThinkingModel) {
+    if (isThinkingModel && isGenerating) {
       setSeconds(0)
       intervalRef.current = setInterval(() => {
         setSeconds((prev) => prev + 1)
@@ -38,7 +39,7 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
         intervalRef.current = null
       }
     }
-  }, [isThinkingModel])
+  }, [isThinkingModel, isGenerating])
 
   const getThinkingLevelText = () => {
     switch (thinkingLevel) {
@@ -94,7 +95,7 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
 // Collapsed thinking time display (shown after completion)
 interface ThinkingTimeDisplayProps {
   seconds: number
-  thinkingLevel?: 'low' | 'medium' | 'high'
+  thinkingLevel?: ThinkingLevel
   className?: string
 }
 
