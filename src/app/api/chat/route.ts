@@ -1,9 +1,13 @@
-import { streamText, APICallError, StreamData, type CoreMessage, type JSONValue } from 'ai'
-import { getLanguageModel } from '@/lib/ai/providers'
+import { streamText, APICallError, type ModelMessage } from 'ai'
+import { getLanguageModel, getWebSearchTools, isOpenAIReasoningModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
-import { AI_MODELS, type AIProvider } from '@/types/ai'
+import { AI_MODELS, VALID_THINKING_LEVELS, type AIProvider, type ThinkingLevel } from '@/types/ai'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { isValidProvider } from '@/lib/api-key-validation'
+
+function isValidThinkingLevel(level: unknown): level is ThinkingLevel {
+  return typeof level === 'string' && VALID_THINKING_LEVELS.includes(level as ThinkingLevel)
+}
 
 // Use Node.js runtime for better base64 image handling
 // Edge Runtime has known issues with base64 image processing
@@ -196,11 +200,15 @@ export async function POST(req: Request) {
       modelId,
       provider,
       apiKey,
+      thinkingLevel,
+      webSearchEnabled,
     } = body as {
       messages: ChatMessage[]
       modelId: string
       provider: AIProvider
       apiKey: string
+      thinkingLevel?: ThinkingLevel
+      webSearchEnabled?: boolean
     }
 
     if (!validateApiKey(apiKey)) {
@@ -275,7 +283,7 @@ export async function POST(req: Request) {
     let requestTotalImageSize = 0
     const imageRejections: ImageRejection[] = []
 
-    const processedMessages: CoreMessage[] = validatedMessages.map((message, messageIndex) => {
+    const processedMessages: ModelMessage[] = validatedMessages.map((message, messageIndex) => {
       const hasMessageAttachments = message.experimental_attachments && message.experimental_attachments.length > 0
 
       // If message has attachments, create multimodal content
@@ -364,7 +372,7 @@ export async function POST(req: Request) {
         return {
           role: message.role,
           content: parts,
-        } as CoreMessage
+        } as ModelMessage
       }
 
       // Regular text message
@@ -372,7 +380,7 @@ export async function POST(req: Request) {
         return {
           role: message.role,
           content: sanitizeInput(message.content),
-        } as CoreMessage
+        } as ModelMessage
       }
 
       // Already multimodal content - sanitize text parts and validate image parts
@@ -459,37 +467,50 @@ export async function POST(req: Request) {
       return {
         role: message.role,
         content: sanitizedContent,
-      } as CoreMessage
+      } as ModelMessage
     })
 
-    const model = getLanguageModel(provider, modelId, apiKey)
-    const data = new StreamData()
+    // Pass webSearchEnabled to getLanguageModel (handles Google search grounding)
+    const model = getLanguageModel(provider, modelId, apiKey, {
+      webSearchEnabled: webSearchEnabled === true,
+    })
 
+    // Get web search tools for all providers (OpenAI, Anthropic, Google)
+    // All providers use tool-based search in AI SDK v6
+    const webSearchTools = webSearchEnabled === true
+      ? getWebSearchTools(provider, apiKey)
+      : undefined
+
+    // Log image rejections for debugging (AI SDK v6 removed StreamData)
     if (imageRejections.length > 0) {
-      const serializableRejections = imageRejections.map((rejection) => ({
-        messageIndex: rejection.messageIndex,
-        source: rejection.source,
-        reason: rejection.reason,
-        attachmentName: rejection.attachmentName ?? null,
-        attachmentIndex: rejection.attachmentIndex ?? null,
-        partIndex: rejection.partIndex ?? null,
-        mimeType: rejection.mimeType ?? null,
-        sizeBytes: rejection.sizeBytes ?? null,
-      }))
-
-      data.append({ imageRejections: serializableRejections } as JSONValue)
+      console.warn('Image rejections:', imageRejections)
     }
+
+    // Check if this is an OpenAI reasoning model (requires special configuration)
+    const isReasoningModel = provider === 'openai' && isOpenAIReasoningModel(modelId)
+
+    // Use client-specified thinking level if valid, otherwise default to 'medium'
+    const effectiveThinkingLevel: ThinkingLevel = isValidThinkingLevel(thinkingLevel)
+      ? thinkingLevel
+      : 'medium'
 
     const result = streamText({
       model,
       messages: processedMessages,
-      onFinish: () => {
-        // Close the StreamData to properly flush data and terminate the response
-        data.close()
-      },
+      // Add web search tools for OpenAI and Anthropic when enabled
+      ...(webSearchTools && { tools: webSearchTools }),
+      // Configure reasoning effort for OpenAI reasoning models
+      // Uses client-specified level for customizable thinking depth
+      ...(isReasoningModel && {
+        providerOptions: {
+          openai: {
+            reasoningEffort: effectiveThinkingLevel,
+          },
+        },
+      }),
     })
 
-    return result.toDataStreamResponse({ data })
+    return result.toUIMessageStreamResponse()
   } catch (error) {
 
     // Use APICallError.isInstance() for type-safe error handling

@@ -131,10 +131,10 @@ export function ChatInput({
                 type="button"
                 onClick={() => handleRemoveImage(index)}
                 disabled={disabled}
-                className="absolute -right-1 -top-1 rounded-full bg-destructive p-0.5 text-destructive-foreground shadow-sm hover:bg-destructive/90 disabled:opacity-50"
+                className="absolute right-0.5 top-0.5 rounded-full bg-destructive p-1 text-destructive-foreground shadow-md hover:bg-destructive/90 disabled:opacity-50"
                 aria-label={t('removeImage', { number: index + 1 })}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
