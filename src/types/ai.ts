@@ -3,7 +3,8 @@ export type AIProvider = 'openai' | 'anthropic' | 'google'
 export type ModelTier = 'default' | 'premium' | 'reasoning'
 
 // Thinking/reasoning effort levels for models that support extended thinking
-export type ThinkingLevel = 'low' | 'medium' | 'high'
+export const VALID_THINKING_LEVELS = ['low', 'medium', 'high'] as const
+export type ThinkingLevel = (typeof VALID_THINKING_LEVELS)[number]
 
 export interface AIModel {
   id: string

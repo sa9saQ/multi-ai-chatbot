@@ -1,12 +1,9 @@
 import { streamText, APICallError, type ModelMessage } from 'ai'
 import { getLanguageModel, getWebSearchTools, isOpenAIReasoningModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
-import { AI_MODELS, type AIProvider, type ThinkingLevel } from '@/types/ai'
+import { AI_MODELS, VALID_THINKING_LEVELS, type AIProvider, type ThinkingLevel } from '@/types/ai'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { isValidProvider } from '@/lib/api-key-validation'
-
-// Valid thinking levels for reasoning models
-const VALID_THINKING_LEVELS: ThinkingLevel[] = ['low', 'medium', 'high']
 
 function isValidThinkingLevel(level: unknown): level is ThinkingLevel {
   return typeof level === 'string' && VALID_THINKING_LEVELS.includes(level as ThinkingLevel)
