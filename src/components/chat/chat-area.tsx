@@ -201,6 +201,10 @@ export function ChatArea() {
     let effectiveModelId = selectedModelId
     let effectiveProvider = selectedProvider
     let effectiveApiKey = apiKey
+
+    // Wrap in try-finally to ensure skipSyncRef is always cleared
+    // This covers createConversation(), getApiKey(), and all subsequent operations
+    try {
     if (!convId) {
       // Set flag to skip message sync - prevents double message from useEffect
       // The effect would run due to currentConversationId change, but we'll manually append
@@ -215,24 +219,18 @@ export function ChatArea() {
       // we need to fetch the correct API key for the new provider
       if (effectiveProvider !== selectedProvider) {
         if (!hasApiKey(effectiveProvider)) {
-          skipSyncRef.current = false // Clear flag on early return
           toast.error(t('apiKeyMissing'))
           return
         }
         // Fetch API key for the effective provider
         const newApiKey = await getApiKey(effectiveProvider)
         if (!newApiKey) {
-          skipSyncRef.current = false // Clear flag on early return
           toast.error(t('apiKeyLoading'))
           return
         }
         effectiveApiKey = newApiKey
       }
     }
-
-    // Wrap in try-finally to ensure skipSyncRef is always cleared
-    // even if errors occur before the inner try block
-    try {
     // Build message content - capture images before clearing state
     const userMessage = inputValue
     const imagesToSend = [...attachedImages]
@@ -322,15 +320,17 @@ export function ChatArea() {
     // (content+role matching fails with duplicate messages)
     const storedMessages = conversation?.messages ?? []
 
-    // Filter out tool invocation messages (web search intermediate steps)
-    // These are assistant messages that contain tool calls but aren't saved to our store
+    // Filter out tool-only messages (web search intermediate steps without content)
+    // Keep messages that have actual content even if they have toolInvocations
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filteredMessages = messages.filter((m: any) => {
       // Keep only user/assistant roles
       if (!isSupportedRole(m.role)) return false
-      // Filter out messages with tool invocations (intermediate tool call messages)
-      // These are created by AI SDK for web search but we only save final responses
-      if (m.toolInvocations && m.toolInvocations.length > 0) return false
+      // Filter out messages that ONLY have tool invocations without content
+      // AI SDK v6 may include toolInvocations on final response messages - keep those
+      const hasContent = m.content && m.content.trim().length > 0
+      const hasOnlyToolInvocations = m.toolInvocations && m.toolInvocations.length > 0 && !hasContent
+      if (hasOnlyToolInvocations) return false
       return true
     })
 
