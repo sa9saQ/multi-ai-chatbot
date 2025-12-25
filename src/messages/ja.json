@@ -72,6 +72,7 @@
     "thinkingLowDesc": "速い回答",
     "thinkingMediumDesc": "バランス良い",
     "thinkingHighDesc": "じっくり考える",
+    "thinkingModeLabel": "モード",
     "supportsThinking": "思考モード対応",
     "models": {
       "gpt-5-mini": {

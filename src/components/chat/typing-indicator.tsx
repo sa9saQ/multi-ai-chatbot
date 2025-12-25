@@ -63,7 +63,7 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
             {t('thinkingFor', { seconds })}
           </span>
           <span className="text-xs text-purple-500 dark:text-purple-400">
-            {getThinkingLevelText()}モード
+            {getThinkingLevelText()} {tModel('thinkingModeLabel')}
           </span>
         </div>
         <div className="ml-auto flex gap-1">
@@ -134,7 +134,7 @@ export function ThinkingTimeDisplay({
       )}
       {isExpanded && (
         <span className="ml-2 text-xs text-purple-500">
-          {getLevelLabel()}モード
+          {getLevelLabel()} {tModel('thinkingModeLabel')}
         </span>
       )}
     </button>

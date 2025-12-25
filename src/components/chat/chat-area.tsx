@@ -309,46 +309,23 @@ export function ChatArea() {
   const displayMessages: Message[] = React.useMemo(() => {
     // Merge AI SDK messages with stored metadata from conversation
     // AI SDK doesn't persist images or thinking metadata, so we retrieve them from our store
-    // Note: useChat generates different IDs than our store, so we match by content+role
+    // Use index-based matching since both arrays are in the same order
+    // (content+role matching fails with duplicate messages)
     const storedMessages = conversation?.messages ?? []
-
-    // Create a map keyed by content+role for matching (handles ID mismatch)
-    // For user messages with images, content is the same as what we saved
-    type StoredMetadata = {
-      images?: string[]
-      thinkingTime?: number
-      thinkingLevel?: ThinkingLevel
-    }
-    const storedMetadataMap = new Map<string, StoredMetadata>()
-    for (const m of storedMessages) {
-      // Use content+role as key since IDs differ between useChat and store
-      const key = `${m.role}:${m.content}`
-      const metadata: StoredMetadata = {}
-      if (m.images && m.images.length > 0) {
-        metadata.images = m.images
-      }
-      if (m.thinkingTime !== undefined) {
-        metadata.thinkingTime = m.thinkingTime
-        metadata.thinkingLevel = m.thinkingLevel
-      }
-      if (Object.keys(metadata).length > 0) {
-        storedMetadataMap.set(key, metadata)
-      }
-    }
 
     return messages
       .filter((m) => isSupportedRole(m.role))
-      .map((m) => {
-        const key = `${m.role}:${m.content}`
-        const metadata = storedMetadataMap.get(key)
+      .map((m, index) => {
+        // Match by index - storedMessages and messages should be in sync
+        const storedMessage = storedMessages[index]
         return {
           id: m.id,
           role: m.role as MessageRole,
           content: m.content,
           createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
-          images: metadata?.images,
-          thinkingTime: metadata?.thinkingTime,
-          thinkingLevel: metadata?.thinkingLevel,
+          images: storedMessage?.images,
+          thinkingTime: storedMessage?.thinkingTime,
+          thinkingLevel: storedMessage?.thinkingLevel,
         }
       })
   }, [messages, conversation?.messages])

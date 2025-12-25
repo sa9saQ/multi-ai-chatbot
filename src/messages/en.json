@@ -72,6 +72,7 @@
     "thinkingLowDesc": "Quick responses",
     "thinkingMediumDesc": "Balanced",
     "thinkingHighDesc": "Thorough analysis",
+    "thinkingModeLabel": "mode",
     "supportsThinking": "Thinking mode",
     "models": {
       "gpt-5-mini": {

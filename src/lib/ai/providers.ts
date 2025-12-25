@@ -1,7 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import type { AIProvider } from '@/types/ai'
+import { AI_MODELS, type AIProvider } from '@/types/ai'
 
 export function createAIProvider(provider: AIProvider, apiKey: string) {
   if (!apiKey || apiKey.trim() === '') {
@@ -26,21 +26,19 @@ export function createAIProvider(provider: AIProvider, apiKey: string) {
   }
 }
 
-// OpenAI reasoning models that require .responses() method
-// These models use extended thinking and need special handling
-const OPENAI_REASONING_MODELS = [
-  'o1',
-  'o1-mini',
-  'o1-pro',
-  'o3',
-  'o3-mini',
-  'o3-pro',
-  'o4-mini',
-  'gpt-5.2-pro',
-]
+// OpenAI reasoning models derived from AI_MODELS
+// These models use extended thinking and require .responses() method
+const OPENAI_REASONING_MODEL_IDS = AI_MODELS
+  .filter(
+    (m) =>
+      m.provider === 'openai' &&
+      m.supportsThinking === true &&
+      (m.thinkingLevels?.length ?? 0) > 0
+  )
+  .map((m) => m.id)
 
-function isOpenAIReasoningModel(modelId: string): boolean {
-  return OPENAI_REASONING_MODELS.some(
+export function isOpenAIReasoningModel(modelId: string): boolean {
+  return OPENAI_REASONING_MODEL_IDS.some(
     (rm) => modelId === rm || modelId.startsWith(`${rm}-`)
   )
 }

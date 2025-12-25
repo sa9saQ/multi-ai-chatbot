@@ -1,5 +1,5 @@
 import { streamText, APICallError, type ModelMessage } from 'ai'
-import { getLanguageModel, getWebSearchTools } from '@/lib/ai/providers'
+import { getLanguageModel, getWebSearchTools, isOpenAIReasoningModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
 import { AI_MODELS, type AIProvider, type ThinkingLevel } from '@/types/ai'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
@@ -478,8 +478,8 @@ export async function POST(req: Request) {
       webSearchEnabled: webSearchEnabled === true,
     })
 
-    // Get web search tools for OpenAI and Anthropic (they use tool-based search)
-    // Google uses useSearchGrounding which is handled in getLanguageModel
+    // Get web search tools for all providers (OpenAI, Anthropic, Google)
+    // All providers use tool-based search in AI SDK v6
     const webSearchTools = webSearchEnabled === true
       ? getWebSearchTools(provider, apiKey)
       : undefined
@@ -489,14 +489,8 @@ export async function POST(req: Request) {
       console.warn('Image rejections:', imageRejections)
     }
 
-    // Reasoning models (o1, o3, o4-mini, gpt-5.2-pro) require special configuration
-    // GPT-5.2-Pro uses extended thinking by default
-    const isOpenAIReasoningModel = provider === 'openai' && (
-      modelId.startsWith('o1') ||
-      modelId.startsWith('o3') ||
-      modelId.startsWith('o4-') ||
-      modelId === 'gpt-5.2-pro'
-    )
+    // Check if this is an OpenAI reasoning model (requires special configuration)
+    const isReasoningModel = provider === 'openai' && isOpenAIReasoningModel(modelId)
 
     // Use client-specified thinking level if valid, otherwise default to 'medium'
     const effectiveThinkingLevel: ThinkingLevel = isValidThinkingLevel(thinkingLevel)
@@ -510,7 +504,7 @@ export async function POST(req: Request) {
       ...(webSearchTools && { tools: webSearchTools }),
       // Configure reasoning effort for OpenAI reasoning models
       // Uses client-specified level for customizable thinking depth
-      ...(isOpenAIReasoningModel && {
+      ...(isReasoningModel && {
         providerOptions: {
           openai: {
             reasoningEffort: effectiveThinkingLevel,
