@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Brain, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/hooks/use-chat-store'
-import { getModelById } from '@/types/ai'
+import { getModelById, hasConfigurableThinking } from '@/types/ai'
 
 interface TypingIndicatorProps {
   className?: string
@@ -20,6 +20,8 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
 
   const currentModel = getModelById(selectedModelId)
   const isThinkingModel = currentModel?.supportsThinking ?? false
+  // Only show thinking level for models with configurable levels (not native thinking like Gemini)
+  const showThinkingLevel = hasConfigurableThinking(selectedModelId)
 
   // Seconds counter for thinking models
   React.useEffect(() => {
@@ -62,9 +64,11 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
           <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
             {t('thinkingFor', { seconds })}
           </span>
-          <span className="text-xs text-purple-500 dark:text-purple-400">
-            {getThinkingLevelText()} {tModel('thinkingModeLabel')}
-          </span>
+          {showThinkingLevel && (
+            <span className="text-xs text-purple-500 dark:text-purple-400">
+              {getThinkingLevelText()} {tModel('thinkingModeLabel')}
+            </span>
+          )}
         </div>
         <div className="ml-auto flex gap-1">
           <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500 [animation-delay:-0.3s]" />
@@ -96,7 +100,7 @@ interface ThinkingTimeDisplayProps {
 
 export function ThinkingTimeDisplay({
   seconds,
-  thinkingLevel = 'medium',
+  thinkingLevel,
   className,
 }: ThinkingTimeDisplayProps) {
   const t = useTranslations('chat')
@@ -104,6 +108,7 @@ export function ThinkingTimeDisplay({
   const [isExpanded, setIsExpanded] = React.useState(false)
 
   const getLevelLabel = () => {
+    if (!thinkingLevel) return null
     switch (thinkingLevel) {
       case 'low':
         return tModel('thinkingLow')
@@ -132,7 +137,7 @@ export function ThinkingTimeDisplay({
       ) : (
         <ChevronDown className="h-3.5 w-3.5 text-purple-500" />
       )}
-      {isExpanded && (
+      {isExpanded && thinkingLevel && (
         <span className="ml-2 text-xs text-purple-500">
           {getLevelLabel()} {tModel('thinkingModeLabel')}
         </span>
