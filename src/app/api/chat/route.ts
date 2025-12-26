@@ -510,8 +510,9 @@ export async function POST(req: Request) {
       }),
     })
 
-    return result.toUIMessageStreamResponse()
+    return result.toTextStreamResponse()
   } catch (error) {
+    console.error('Chat API error:', error)
 
     // Use APICallError.isInstance() for type-safe error handling
     if (APICallError.isInstance(error)) {

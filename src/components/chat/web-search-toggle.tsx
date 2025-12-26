@@ -16,7 +16,7 @@ import { supportsWebSearch } from '@/types/ai'
 
 export function WebSearchToggle() {
   const t = useTranslations('chat')
-  const { selectedModelId, webSearchEnabled, setWebSearchEnabled, isGenerating } = useChatStore()
+  const { selectedModelId, webSearchEnabled, setWebSearchEnabled, generatingConversationId, currentConversationId } = useChatStore()
 
   const modelSupportsWebSearch = supportsWebSearch(selectedModelId)
 
@@ -32,7 +32,7 @@ export function WebSearchToggle() {
             variant={webSearchEnabled ? 'default' : 'outline'}
             size="sm"
             onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-            disabled={isGenerating}
+            disabled={generatingConversationId !== null && generatingConversationId === currentConversationId}
             className={cn(
               'gap-2 font-medium transition-all',
               webSearchEnabled && 'bg-emerald-600 hover:bg-emerald-700 text-white',

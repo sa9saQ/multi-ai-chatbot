@@ -14,19 +14,20 @@ interface TypingIndicatorProps {
 export function TypingIndicator({ className }: TypingIndicatorProps) {
   const t = useTranslations('chat')
   const tModel = useTranslations('model')
-  const { selectedModelId, thinkingLevel, isGenerating } = useChatStore()
+  const { selectedModelId, thinkingLevel, generatingConversationId, currentConversationId } = useChatStore()
   const [seconds, setSeconds] = React.useState(0)
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
 
   const currentModel = getModelById(selectedModelId)
   const isThinkingModel = currentModel?.supportsThinking ?? false
   // Only show thinking level for models with configurable levels (not native thinking like Gemini)
+  const isCurrentGenerating = generatingConversationId !== null && generatingConversationId === currentConversationId
   const showThinkingLevel = hasConfigurableThinking(selectedModelId)
 
   // Seconds counter for thinking models
-  // Reset counter when isGenerating changes to handle consecutive generations
+  // Reset counter when generatingConversationId changes to handle consecutive generations
   React.useEffect(() => {
-    if (isThinkingModel && isGenerating) {
+    if (isThinkingModel && isCurrentGenerating) {
       setSeconds(0)
       intervalRef.current = setInterval(() => {
         setSeconds((prev) => prev + 1)
@@ -39,42 +40,74 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
         intervalRef.current = null
       }
     }
-  }, [isThinkingModel, isGenerating])
+  }, [isThinkingModel, generatingConversationId])
 
   const getThinkingLevelText = () => {
     switch (thinkingLevel) {
-      case 'low':
-        return tModel('thinkingLow')
       case 'medium':
         return tModel('thinkingMedium')
       case 'high':
         return tModel('thinkingHigh')
+      case 'xhigh':
+        return tModel('thinkingXhigh')
+    }
+  }
+
+  // Get colors based on thinking level
+  const getLevelColors = () => {
+    switch (thinkingLevel) {
+      case 'medium':
+        return {
+          bg: 'bg-green-50 dark:bg-green-950/30',
+          icon: 'text-green-500',
+          text: 'text-green-700 dark:text-green-300',
+          subtext: 'text-green-500 dark:text-green-400',
+          dot: 'bg-green-500',
+        }
+      case 'high':
+        return {
+          bg: 'bg-blue-50 dark:bg-blue-950/30',
+          icon: 'text-blue-500',
+          text: 'text-blue-700 dark:text-blue-300',
+          subtext: 'text-blue-500 dark:text-blue-400',
+          dot: 'bg-blue-500',
+        }
+      case 'xhigh':
+        return {
+          bg: 'bg-purple-50 dark:bg-purple-950/30',
+          icon: 'text-purple-500',
+          text: 'text-purple-700 dark:text-purple-300',
+          subtext: 'text-purple-500 dark:text-purple-400',
+          dot: 'bg-purple-500',
+        }
     }
   }
 
   if (isThinkingModel) {
+    const colors = getLevelColors()
     return (
       <div
         className={cn(
-          'flex items-center gap-3 rounded-lg bg-purple-50 px-4 py-2.5 dark:bg-purple-950/30',
+          'flex items-center gap-3 rounded-lg px-4 py-2.5',
+          colors.bg,
           className
         )}
       >
-        <Brain className="h-5 w-5 animate-pulse text-purple-500" />
+        <Brain className={cn('h-5 w-5 animate-pulse', colors.icon)} />
         <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+          <span className={cn('text-sm font-medium', colors.text)}>
             {t('thinkingFor', { seconds })}
           </span>
           {showThinkingLevel && (
-            <span className="text-xs text-purple-500 dark:text-purple-400">
+            <span className={cn('text-xs', colors.subtext)}>
               {getThinkingLevelText()} {tModel('thinkingModeLabel')}
             </span>
           )}
         </div>
         <div className="ml-auto flex gap-1">
-          <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500 [animation-delay:-0.3s]" />
-          <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500 [animation-delay:-0.15s]" />
-          <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500" />
+          <span className={cn('h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]', colors.dot)} />
+          <span className={cn('h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]', colors.dot)} />
+          <span className={cn('h-2 w-2 animate-bounce rounded-full', colors.dot)} />
         </div>
       </div>
     )
@@ -111,14 +144,41 @@ export function ThinkingTimeDisplay({
   const getLevelLabel = () => {
     if (!thinkingLevel) return null
     switch (thinkingLevel) {
-      case 'low':
-        return tModel('thinkingLow')
       case 'medium':
         return tModel('thinkingMedium')
       case 'high':
         return tModel('thinkingHigh')
+      case 'xhigh':
+        return tModel('thinkingXhigh')
     }
   }
+
+  // Get colors based on thinking level
+  const getColors = () => {
+    switch (thinkingLevel) {
+      case 'medium':
+        return {
+          bg: 'bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50',
+          icon: 'text-green-500',
+          text: 'text-green-700 dark:text-green-300',
+        }
+      case 'high':
+        return {
+          bg: 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50',
+          icon: 'text-blue-500',
+          text: 'text-blue-700 dark:text-blue-300',
+        }
+      case 'xhigh':
+      default:
+        return {
+          bg: 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/50',
+          icon: 'text-purple-500',
+          text: 'text-purple-700 dark:text-purple-300',
+        }
+    }
+  }
+
+  const colors = getColors()
 
   return (
     <button
@@ -126,21 +186,22 @@ export function ThinkingTimeDisplay({
       onClick={() => setIsExpanded(!isExpanded)}
       aria-expanded={isExpanded}
       className={cn(
-        'flex items-center gap-2 rounded-md bg-purple-50 px-3 py-1.5 text-sm transition-colors hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/50',
+        'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
+        colors.bg,
         className
       )}
     >
-      <Brain className="h-4 w-4 text-purple-500" />
-      <span className="text-purple-700 dark:text-purple-300">
+      <Brain className={cn('h-4 w-4', colors.icon)} />
+      <span className={colors.text}>
         {t('thoughtFor', { seconds })}
       </span>
       {isExpanded ? (
-        <ChevronUp className="h-3.5 w-3.5 text-purple-500" />
+        <ChevronUp className={cn('h-3.5 w-3.5', colors.icon)} />
       ) : (
-        <ChevronDown className="h-3.5 w-3.5 text-purple-500" />
+        <ChevronDown className={cn('h-3.5 w-3.5', colors.icon)} />
       )}
       {isExpanded && thinkingLevel && (
-        <span className="ml-2 text-xs text-purple-500">
+        <span className={cn('ml-2 text-xs', colors.icon)}>
           {getLevelLabel()} {tModel('thinkingModeLabel')}
         </span>
       )}
