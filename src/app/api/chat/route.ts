@@ -494,6 +494,9 @@ export async function POST(req: Request) {
       ? thinkingLevel
       : 'medium'
 
+    // Map 'xhigh' to 'high' for OpenAI API (xhigh is internal UI value, API only accepts low/medium/high)
+    const apiReasoningEffort = effectiveThinkingLevel === 'xhigh' ? 'high' : effectiveThinkingLevel
+
     const result = streamText({
       model,
       messages: processedMessages,
@@ -504,7 +507,7 @@ export async function POST(req: Request) {
       ...(isReasoningModel && {
         providerOptions: {
           openai: {
-            reasoningEffort: effectiveThinkingLevel,
+            reasoningEffort: apiReasoningEffort,
           },
         },
       }),

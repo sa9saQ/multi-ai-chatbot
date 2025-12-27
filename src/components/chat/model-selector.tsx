@@ -40,7 +40,6 @@ export function ModelSelector() {
 
   const handleSelect = (model: AIModel) => {
     // Prevent model switching during streaming to avoid losing AI responses
-    
     if (isCurrentGenerating) return
     setSelectedModel(model.id, model.provider)
     setOpen(false) // Close dropdown after selection

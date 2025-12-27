@@ -3,7 +3,8 @@ export type AIProvider = 'openai' | 'anthropic' | 'google'
 export type ModelTier = 'default' | 'premium' | 'reasoning'
 
 // Thinking/reasoning effort levels for models that support extended thinking
-// OpenAI reasoning models support: medium, high, xhigh (not 'low')
+// UI values: medium, high, xhigh (xhigh maps to 'high' when sent to OpenAI API)
+// OpenAI API accepts: low, medium, high (xhigh is internal UI representation for "Maximum")
 export const VALID_THINKING_LEVELS = ['medium', 'high', 'xhigh'] as const
 export type ThinkingLevel = (typeof VALID_THINKING_LEVELS)[number]
 

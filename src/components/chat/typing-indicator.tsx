@@ -40,7 +40,7 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
         intervalRef.current = null
       }
     }
-  }, [isThinkingModel, generatingConversationId])
+  }, [isThinkingModel, generatingConversationId, currentConversationId])
 
   const getThinkingLevelText = () => {
     switch (thinkingLevel) {
@@ -50,6 +50,9 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
         return tModel('thinkingHigh')
       case 'xhigh':
         return tModel('thinkingXhigh')
+      default:
+        // Fallback to medium for unknown values (e.g., persisted 'low' from old versions)
+        return tModel('thinkingMedium')
     }
   }
 
@@ -79,6 +82,15 @@ export function TypingIndicator({ className }: TypingIndicatorProps) {
           text: 'text-purple-700 dark:text-purple-300',
           subtext: 'text-purple-500 dark:text-purple-400',
           dot: 'bg-purple-500',
+        }
+      default:
+        // Fallback to medium (green) for unknown values (e.g., persisted 'low' from old versions)
+        return {
+          bg: 'bg-green-50 dark:bg-green-950/30',
+          icon: 'text-green-500',
+          text: 'text-green-700 dark:text-green-300',
+          subtext: 'text-green-500 dark:text-green-400',
+          dot: 'bg-green-500',
         }
     }
   }
@@ -150,6 +162,9 @@ export function ThinkingTimeDisplay({
         return tModel('thinkingHigh')
       case 'xhigh':
         return tModel('thinkingXhigh')
+      default:
+        // Fallback to medium for unknown values (e.g., persisted 'low' from old versions)
+        return tModel('thinkingMedium')
     }
   }
 
@@ -169,11 +184,17 @@ export function ThinkingTimeDisplay({
           text: 'text-blue-700 dark:text-blue-300',
         }
       case 'xhigh':
-      default:
         return {
           bg: 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/50',
           icon: 'text-purple-500',
           text: 'text-purple-700 dark:text-purple-300',
+        }
+      default:
+        // Fallback to medium (green) for unknown values
+        return {
+          bg: 'bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50',
+          icon: 'text-green-500',
+          text: 'text-green-700 dark:text-green-300',
         }
     }
   }

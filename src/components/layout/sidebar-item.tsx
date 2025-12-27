@@ -126,7 +126,10 @@ export function SidebarItem({
       aria-current={isActive ? 'true' : undefined}
       aria-disabled={isGenerating}
       aria-label={`${conversation.title || t('newChat')} - ${conversation.messageCount} ${t('messages')}`}
-      onClick={onSelect}
+      onClick={() => {
+        if (isGenerating) return
+        onSelect()
+      }}
       onKeyDown={(e) => {
         if (isGenerating) return
         if (e.key === 'Enter' || e.key === ' ') {

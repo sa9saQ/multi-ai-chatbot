@@ -159,6 +159,10 @@ export function ChatArea() {
 
   // Sync messages when switching conversations OR when model changes (due to id change in useChat)
   React.useEffect(() => {
+    // Stop ongoing generation when switching conversations to prevent background streaming
+    if (status === 'streaming' || status === 'submitted') {
+      stop()
+    }
     // Skip sync during handleSubmit flow to prevent double message
     // (createConversation triggers this effect, but we're about to append the message manually)
     if (skipSyncRef.current) {
@@ -177,7 +181,7 @@ export function ChatArea() {
           createdAt: m.createdAt,
         })) ?? []
     setMessages(newMessages)
-  }, [currentConversationId, selectedModelId, selectedProvider, setMessages, syncTrigger])
+  }, [currentConversationId, selectedModelId, selectedProvider, setMessages, syncTrigger, status, stop])
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
