@@ -38,7 +38,7 @@ export function ChatArea() {
     thinkingLevel,
     webSearchEnabled,
     addMessage,
-    setIsGenerating,
+    setGeneratingConversationId,
     createConversation,
   } = useChatStore()
   // Use Zustand selector to properly track conversation changes (including new messages)
@@ -104,9 +104,13 @@ export function ChatArea() {
   const skipSyncRef = React.useRef(false)
   // Counter to trigger re-sync after skipSyncRef is cleared (handles navigation during request)
   const [syncTrigger, setSyncTrigger] = React.useState(0)
+  // Track previous conversation ID to detect actual conversation switches (not status changes)
+  const prevConversationIdRef = React.useRef<string | null>(currentConversationId)
 
-  const { messages, append, status, setMessages } = useChat({
+  const { messages, append, status, setMessages, stop } = useChat({
     api: '/api/chat',
+    // Use text stream protocol for simpler parsing
+    streamProtocol: 'text',
     // Default body (can be overridden in append)
     body: {
       modelId: selectedModelId,
@@ -125,7 +129,7 @@ export function ChatArea() {
         createdAt: m.createdAt,
       })) ?? [],
     onFinish: (message) => {
-      setIsGenerating(false)
+      setGeneratingConversationId(null)
       // Use pendingContextRef to get the context captured at submit time
       // This avoids stale closure issues since onFinish is called with the correct message
       const context = pendingContextRef.current
@@ -148,15 +152,29 @@ export function ChatArea() {
       }
     },
     onError: (error) => {
-      setIsGenerating(false)
+      setGeneratingConversationId(null)
       pendingContextRef.current = null
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(errorMessage || t('errorOccurred'), { id: 'chat-error' })
     },
   })
 
+  // Stable ref for stop function to call from useEffect without adding to deps
+  const stopRef = React.useRef(stop)
+  stopRef.current = stop
+
   // Sync messages when switching conversations OR when model changes (due to id change in useChat)
   React.useEffect(() => {
+    // Only stop ongoing generation when conversation actually changes (not on status changes)
+    // This prevents: status='submitted' → effect fires → stop() → generation aborted immediately
+    const conversationChanged = prevConversationIdRef.current !== currentConversationId
+    if (conversationChanged) {
+      // Stop background streaming from previous conversation
+      stopRef.current()
+      // Clear pending context to prevent stale onFinish from adding message to wrong conversation
+      pendingContextRef.current = null
+      prevConversationIdRef.current = currentConversationId
+    }
     // Skip sync during handleSubmit flow to prevent double message
     // (createConversation triggers this effect, but we're about to append the message manually)
     if (skipSyncRef.current) {
@@ -275,7 +293,7 @@ export function ChatArea() {
       thinkingLevel,
       isThinkingModel: effectiveModel?.supportsThinking ?? false,
     }
-    setIsGenerating(true)
+    setGeneratingConversationId(convId)
     try {
       await append(
         {
@@ -299,7 +317,7 @@ export function ChatArea() {
       // Synchronous errors (before request starts) - cleanup context
       // Async errors are handled by onError callback
       pendingContextRef.current = null
-      setIsGenerating(false)
+      setGeneratingConversationId(null)
       const errorMessage = error instanceof Error ? error.message : String(error)
       toast.error(errorMessage || t('errorOccurred'), { id: 'chat-error' })
     }

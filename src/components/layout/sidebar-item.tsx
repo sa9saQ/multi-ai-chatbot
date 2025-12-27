@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useTranslations } from 'next-intl'
-import { Trash2, Pencil, Check, X } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Loader2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,7 @@ import { AI_PROVIDERS } from '@/types/ai'
 interface SidebarItemProps {
   conversation: ConversationSummary
   isActive: boolean
-  disabled?: boolean
+  isGenerating?: boolean
   onSelect: () => void
   onDelete: () => void
   onRename: (newTitle: string) => void
@@ -34,7 +34,7 @@ const MAX_TITLE_LENGTH = 100
 export function SidebarItem({
   conversation,
   isActive,
-  disabled = false,
+  isGenerating = false,
   onSelect,
   onDelete,
   onRename,
@@ -122,13 +122,16 @@ export function SidebarItem({
   return (
     <div
       role="button"
-      tabIndex={disabled ? -1 : 0}
+      tabIndex={0}
       aria-current={isActive ? 'true' : undefined}
-      aria-disabled={disabled}
+      aria-disabled={isGenerating}
       aria-label={`${conversation.title || t('newChat')} - ${conversation.messageCount} ${t('messages')}`}
-      onClick={disabled ? undefined : onSelect}
+      onClick={() => {
+        if (isGenerating) return
+        onSelect()
+      }}
       onKeyDown={(e) => {
-        if (disabled) return
+        if (isGenerating) return
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onSelect()
@@ -137,10 +140,10 @@ export function SidebarItem({
       className={cn(
         'group flex cursor-pointer items-center gap-2 rounded-lg p-2 hover:bg-accent',
         isActive && 'bg-accent',
-        disabled && 'cursor-not-allowed opacity-50'
+        isGenerating && 'opacity-70'
       )}
     >
-      <span className="text-sm">{providerIcon}</span>
+      {isGenerating ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <span className="text-sm">{providerIcon}</span>}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{conversation.title || t('newChat')}</p>
         <p className="truncate text-xs text-muted-foreground">
@@ -152,10 +155,10 @@ export function SidebarItem({
           variant="ghost"
           size="icon"
           className="h-10 w-10 md:h-7 md:w-7"
-          disabled={disabled}
+          disabled={isGenerating}
           onClick={(e) => {
             e.stopPropagation()
-            if (disabled) return
+            if (isGenerating) return
             setIsEditing(true)
           }}
         >
@@ -168,7 +171,7 @@ export function SidebarItem({
               variant="ghost"
               size="icon"
               className="h-10 w-10 text-destructive hover:text-destructive md:h-7 md:w-7"
-              disabled={disabled}
+              disabled={isGenerating}
               onClick={(e) => e.stopPropagation()}
             >
               <Trash2 className="h-4 w-4 md:h-3 md:w-3" />

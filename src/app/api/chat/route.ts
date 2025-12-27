@@ -494,6 +494,9 @@ export async function POST(req: Request) {
       ? thinkingLevel
       : 'medium'
 
+    // Map 'xhigh' to 'high' for OpenAI API (xhigh is internal UI value, API only accepts low/medium/high)
+    const apiReasoningEffort = effectiveThinkingLevel === 'xhigh' ? 'high' : effectiveThinkingLevel
+
     const result = streamText({
       model,
       messages: processedMessages,
@@ -504,14 +507,20 @@ export async function POST(req: Request) {
       ...(isReasoningModel && {
         providerOptions: {
           openai: {
-            reasoningEffort: effectiveThinkingLevel,
+            reasoningEffort: apiReasoningEffort,
           },
         },
       }),
     })
 
-    return result.toUIMessageStreamResponse()
+    return result.toTextStreamResponse()
   } catch (error) {
+    // Structured error logging without sensitive information
+    console.error('Chat API error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      name: error instanceof Error ? error.name : undefined,
+      timestamp: new Date().toISOString(),
+    })
 
     // Use APICallError.isInstance() for type-safe error handling
     if (APICallError.isInstance(error)) {

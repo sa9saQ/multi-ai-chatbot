@@ -3,7 +3,9 @@ export type AIProvider = 'openai' | 'anthropic' | 'google'
 export type ModelTier = 'default' | 'premium' | 'reasoning'
 
 // Thinking/reasoning effort levels for models that support extended thinking
-export const VALID_THINKING_LEVELS = ['low', 'medium', 'high'] as const
+// UI values: medium, high, xhigh (xhigh maps to 'high' when sent to OpenAI API)
+// OpenAI API accepts: low, medium, high (xhigh is internal UI representation for "Maximum")
+export const VALID_THINKING_LEVELS = ['medium', 'high', 'xhigh'] as const
 export type ThinkingLevel = (typeof VALID_THINKING_LEVELS)[number]
 
 export interface AIModel {
@@ -47,7 +49,7 @@ export const AI_MODELS: AIModel[] = [
     pricing: { input: 10.0, output: 40.0 },
     supportsVision: true,
     supportsThinking: true,
-    thinkingLevels: ['low', 'medium', 'high'],
+    thinkingLevels: ['medium', 'high', 'xhigh'],
     supportsWebSearch: true,
   },
 
@@ -63,7 +65,7 @@ export const AI_MODELS: AIModel[] = [
     pricing: { input: 1.1, output: 4.4 },
     supportsVision: true,
     supportsThinking: true,
-    thinkingLevels: ['low', 'medium', 'high'],
+    thinkingLevels: ['medium', 'high', 'xhigh'],
     supportsWebSearch: true,
   },
 
@@ -107,7 +109,7 @@ export const AI_MODELS: AIModel[] = [
     pricing: { input: 15.0, output: 60.0 },
     supportsVision: true,
     supportsThinking: true,
-    thinkingLevels: ['low', 'medium', 'high'],
+    thinkingLevels: ['medium', 'high', 'xhigh'],
     supportsWebSearch: true,
   },
 

@@ -15,7 +15,8 @@ interface ChatState {
   selectedProvider: AIProvider
   thinkingLevel: ThinkingLevel
   webSearchEnabled: boolean
-  isGenerating: boolean
+  // Track which conversation is currently generating (null = none)
+  generatingConversationId: string | null
 }
 
 interface ChatActions {
@@ -28,7 +29,8 @@ interface ChatActions {
   setSelectedModel: (modelId: string, provider: AIProvider) => void
   setThinkingLevel: (level: ThinkingLevel) => void
   setWebSearchEnabled: (enabled: boolean) => void
-  setIsGenerating: (isGenerating: boolean) => void
+  setGeneratingConversationId: (conversationId: string | null) => void
+  isGenerating: () => boolean // Computed: true if any conversation is generating
   getConversationSummaries: () => ConversationSummary[]
   getCurrentConversation: () => Conversation | null
   clearAllConversations: () => void
@@ -48,7 +50,7 @@ export const useChatStore = create<ChatState & ChatActions>()(
       selectedProvider: defaultModel.provider,
       thinkingLevel: 'medium' as ThinkingLevel, // Default thinking level
       webSearchEnabled: false, // Web search disabled by default
-      isGenerating: false,
+      generatingConversationId: null,
 
       createConversation: () => {
         const id = generateId()
@@ -193,8 +195,12 @@ export const useChatStore = create<ChatState & ChatActions>()(
         set({ webSearchEnabled: enabled })
       },
 
-      setIsGenerating: (isGenerating) => {
-        set({ isGenerating })
+      setGeneratingConversationId: (conversationId) => {
+        set({ generatingConversationId: conversationId })
+      },
+
+      isGenerating: () => {
+        return get().generatingConversationId !== null
       },
 
       getConversationSummaries: () => {
