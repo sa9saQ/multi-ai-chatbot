@@ -104,6 +104,8 @@ export function ChatArea() {
   const skipSyncRef = React.useRef(false)
   // Counter to trigger re-sync after skipSyncRef is cleared (handles navigation during request)
   const [syncTrigger, setSyncTrigger] = React.useState(0)
+  // Track previous conversation ID to detect actual conversation switches (not status changes)
+  const prevConversationIdRef = React.useRef<string | null>(currentConversationId)
 
   const { messages, append, status, setMessages, stop } = useChat({
     api: '/api/chat',
@@ -157,11 +159,21 @@ export function ChatArea() {
     },
   })
 
+  // Stable ref for stop function to call from useEffect without adding to deps
+  const stopRef = React.useRef(stop)
+  stopRef.current = stop
+
   // Sync messages when switching conversations OR when model changes (due to id change in useChat)
   React.useEffect(() => {
-    // Stop ongoing generation when switching conversations to prevent background streaming
-    if (status === 'streaming' || status === 'submitted') {
-      stop()
+    // Only stop ongoing generation when conversation actually changes (not on status changes)
+    // This prevents: status='submitted' → effect fires → stop() → generation aborted immediately
+    const conversationChanged = prevConversationIdRef.current !== currentConversationId
+    if (conversationChanged) {
+      // Stop background streaming from previous conversation
+      stopRef.current()
+      // Clear pending context to prevent stale onFinish from adding message to wrong conversation
+      pendingContextRef.current = null
+      prevConversationIdRef.current = currentConversationId
     }
     // Skip sync during handleSubmit flow to prevent double message
     // (createConversation triggers this effect, but we're about to append the message manually)
@@ -181,7 +193,7 @@ export function ChatArea() {
           createdAt: m.createdAt,
         })) ?? []
     setMessages(newMessages)
-  }, [currentConversationId, selectedModelId, selectedProvider, setMessages, syncTrigger, status, stop])
+  }, [currentConversationId, selectedModelId, selectedProvider, setMessages, syncTrigger])
 
   const isLoading = status === 'streaming' || status === 'submitted'
 

@@ -31,6 +31,9 @@ function ThinkingLevelIcon({ level, className }: { level: ThinkingLevel; classNa
       return <Brain className={cn('h-4 w-4', className)} />
     case 'xhigh':
       return <Flame className={cn('h-4 w-4', className)} />
+    default:
+      // Fallback to medium icon for any persisted invalid values (e.g., 'low')
+      return <Zap className={cn('h-4 w-4', className)} />
   }
 }
 
@@ -42,6 +45,9 @@ function getLevelColor(level: ThinkingLevel): string {
       return 'text-blue-600 dark:text-blue-400'
     case 'xhigh':
       return 'text-purple-600 dark:text-purple-400'
+    default:
+      // Fallback to medium color for any persisted invalid values
+      return 'text-green-600 dark:text-green-400'
   }
 }
 
@@ -53,6 +59,9 @@ function getLevelBgColor(level: ThinkingLevel): string {
       return 'bg-blue-600 hover:bg-blue-700'
     case 'xhigh':
       return 'bg-purple-600 hover:bg-purple-700'
+    default:
+      // Fallback to medium background for any persisted invalid values
+      return 'bg-green-600 hover:bg-green-700'
   }
 }
 
@@ -75,6 +84,9 @@ export function ThinkingLevelSelector() {
         return t('thinkingHigh')
       case 'xhigh':
         return t('thinkingXhigh')
+      default:
+        // Fallback to medium label for any persisted invalid values
+        return t('thinkingMedium')
     }
   }
 
@@ -86,6 +98,9 @@ export function ThinkingLevelSelector() {
         return t('thinkingHighDesc')
       case 'xhigh':
         return t('thinkingXhighDesc')
+      default:
+        // Fallback to medium description for any persisted invalid values
+        return t('thinkingMediumDesc')
     }
   }
 

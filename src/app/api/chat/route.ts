@@ -515,7 +515,12 @@ export async function POST(req: Request) {
 
     return result.toTextStreamResponse()
   } catch (error) {
-    console.error('Chat API error:', error)
+    // Structured error logging without sensitive information
+    console.error('Chat API error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      name: error instanceof Error ? error.name : undefined,
+      timestamp: new Date().toISOString(),
+    })
 
     // Use APICallError.isInstance() for type-safe error handling
     if (APICallError.isInstance(error)) {
