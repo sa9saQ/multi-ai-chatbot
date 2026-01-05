@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import { Plus, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { SidebarItem } from './sidebar-item'
 import { useChatStore } from '@/hooks/use-chat-store'
 import { useMounted } from '@/hooks/use-mounted'
@@ -52,7 +51,7 @@ export function Sidebar({ className }: SidebarProps) {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 px-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2">
         <div className="space-y-1 pb-2">
           {conversations.length === 0 ? (
             <p className="p-4 text-center text-sm text-muted-foreground">
@@ -72,7 +71,7 @@ export function Sidebar({ className }: SidebarProps) {
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="border-t p-2">
         <Button variant="ghost" className="w-full justify-start gap-2" asChild>

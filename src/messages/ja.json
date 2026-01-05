@@ -53,7 +53,8 @@
     "messages": "メッセージ",
     "deleteConversation": "会話を削除",
     "save": "保存",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "actions": "アクション"
   },
   "model": {
     "select": "モデルを選択",

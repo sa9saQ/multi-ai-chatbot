@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { ModelSelector } from './model-selector'
@@ -19,14 +20,6 @@ import type { Message, MessageRole } from '@/types/chat'
 const SUPPORTED_ROLES: readonly MessageRole[] = ['user', 'assistant'] as const
 function isSupportedRole(role: string): role is MessageRole {
   return SUPPORTED_ROLES.includes(role as MessageRole)
-}
-
-// Extract and validate MIME type from data URL (module level to avoid recreation)
-function getMimeType(dataUrl: string): string {
-  const match = dataUrl.match(/^data:([^;]+);/)
-  const mimeType = match?.[1] ?? 'image/png'
-  // Validate it's an image type, fallback to image/png if not
-  return mimeType.startsWith('image/') ? mimeType : 'image/png'
 }
 
 export function ChatArea() {
@@ -107,28 +100,22 @@ export function ChatArea() {
   // Track previous conversation ID to detect actual conversation switches (not status changes)
   const prevConversationIdRef = React.useRef<string | null>(currentConversationId)
 
-  const { messages, append, status, setMessages, stop } = useChat({
-    api: '/api/chat',
-    // Use text stream protocol for simpler parsing
-    streamProtocol: 'text',
-    // Default body (can be overridden in append)
-    body: {
-      modelId: selectedModelId,
-      provider: selectedProvider,
-      apiKey,
-      thinkingLevel,
-      webSearchEnabled,
-    },
+  const { messages, sendMessage, status, setMessages, stop } = useChat({
+    // Use DefaultChatTransport for AI SDK v6
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
     // Force re-initialization when model/provider changes
     id: `${selectedProvider}-${selectedModelId}`,
-    initialMessages:
+    // AI SDK v6: Use 'messages' instead of 'initialMessages', with parts array
+    messages:
       conversation?.messages.map((m) => ({
         id: m.id,
-        role: m.role,
-        content: m.content,
+        role: m.role as 'user' | 'assistant',
+        parts: [{ type: 'text' as const, text: m.content }],
         createdAt: m.createdAt,
       })) ?? [],
-    onFinish: (message) => {
+    onFinish: ({ message }) => {
       setGeneratingConversationId(null)
       // Use pendingContextRef to get the context captured at submit time
       // This avoids stale closure issues since onFinish is called with the correct message
@@ -138,9 +125,14 @@ export function ChatArea() {
         const thinkingTime = context.isThinkingModel
           ? Math.round((Date.now() - context.startTime) / 1000)
           : undefined
+        // AI SDK v6: Extract text content from message parts
+        const textContent = message.parts
+          ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+          .map((p) => p.text)
+          .join('') ?? ''
         addMessage(context.convId, {
           role: 'assistant',
-          content: message.content,
+          content: textContent,
           modelId: context.modelId,
           // Include thinking metadata for reasoning models
           ...(context.isThinkingModel && {
@@ -183,13 +175,14 @@ export function ChatArea() {
     // Get fresh conversation state from store (not from reactive selector)
     const { conversations, currentConversationId: convId } = useChatStore.getState()
     const conv = conversations.find((c) => c.id === convId) ?? null
+    // AI SDK v6: Use parts array format for messages
     const newMessages =
       conv?.messages
         .filter((m) => isSupportedRole(m.role))
         .map((m) => ({
           id: m.id,
-          role: m.role,
-          content: m.content,
+          role: m.role as 'user' | 'assistant',
+          parts: [{ type: 'text' as const, text: m.content }],
           createdAt: m.createdAt,
         })) ?? []
     setMessages(newMessages)
@@ -271,17 +264,6 @@ export function ChatArea() {
     setInputValue('')
     setAttachedImages(prev => prev.length > 0 ? [] : prev)
 
-    // Convert images to experimental_attachments format
-    const attachments = imagesToSend.map((base64, index) => {
-      const mimeType = getMimeType(base64)
-      const ext = mimeType.split('/')[1] ?? 'png'
-      return {
-        name: `image-${index}.${ext}`,
-        contentType: mimeType,
-        url: base64,
-      }
-    })
-
     // Store context for onFinish callback before starting the request
     // This avoids stale closure issues - onFinish reads from this ref
     // Include timing data for calculating thinking time in reasoning models
@@ -295,12 +277,10 @@ export function ChatArea() {
     }
     setGeneratingConversationId(convId)
     try {
-      await append(
-        {
-          role: 'user',
-          content: messageContent,
-          experimental_attachments: attachments.length > 0 ? attachments : undefined,
-        },
+      // AI SDK v6: Use sendMessage with text property
+      // For images, we pass them in the body to be processed server-side
+      await sendMessage(
+        { text: messageContent },
         {
           body: {
             modelId: effectiveModelId,
@@ -308,6 +288,8 @@ export function ChatArea() {
             apiKey: effectiveApiKey,
             thinkingLevel,
             webSearchEnabled,
+            // Pass images in body for server-side processing
+            images: imagesToSend.length > 0 ? imagesToSend : undefined,
           },
         }
       )
@@ -334,38 +316,62 @@ export function ChatArea() {
   const displayMessages: Message[] = React.useMemo(() => {
     // Merge AI SDK messages with stored metadata from conversation
     // AI SDK doesn't persist images or thinking metadata, so we retrieve them from our store
-    // Use index-based matching since both arrays are in the same order
-    // (content+role matching fails with duplicate messages)
     const storedMessages = conversation?.messages ?? []
 
+    // When NOT streaming, prefer stored messages as the source of truth
+    // This fixes the issue where thinking models send empty content during thinking phase
+    // and AI SDK messages may not update properly after streaming completes
+    if (!isLoading && storedMessages.length > 0) {
+      return storedMessages
+        .filter((m) => isSupportedRole(m.role))
+        .map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          createdAt: m.createdAt,
+          images: m.images,
+          thinkingTime: m.thinkingTime,
+          thinkingLevel: m.thinkingLevel,
+        }))
+    }
+
+    // During streaming, use AI SDK messages for real-time updates
     // Filter out tool-only messages (web search intermediate steps without content)
-    // Keep messages that have actual content even if they have toolInvocations
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filteredMessages = messages.filter((m: any) => {
       // Keep only user/assistant roles
       if (!isSupportedRole(m.role)) return false
+      // AI SDK v6: Check for content in parts array
+      const textContent = m.parts
+        ?.filter((p: { type: string }) => p.type === 'text')
+        .map((p: { text: string }) => p.text)
+        .join('') ?? ''
+      const hasContent = textContent.trim().length > 0
       // Filter out messages that ONLY have tool invocations without content
-      // AI SDK v6 may include toolInvocations on final response messages - keep those
-      const hasContent = m.content && m.content.trim().length > 0
-      const hasOnlyToolInvocations = m.toolInvocations && m.toolInvocations.length > 0 && !hasContent
-      if (hasOnlyToolInvocations) return false
+      const hasToolParts = m.parts?.some((p: { type: string }) => p.type === 'tool-invocation')
+      if (hasToolParts && !hasContent) return false
       return true
     })
 
-    return filteredMessages.map((m, index) => {
+    return filteredMessages.map((m: { id: string; role: string; parts?: Array<{ type: string; text?: string }>; createdAt?: Date }, index: number) => {
       // Match by index - storedMessages and filteredMessages should be in sync
       const storedMessage = storedMessages[index]
+      // AI SDK v6: Extract text content from parts
+      const textContent = m.parts
+        ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+        .map((p) => p.text)
+        .join('') ?? ''
       return {
         id: m.id,
         role: m.role as MessageRole,
-        content: m.content,
+        content: textContent,
         createdAt: m.createdAt ? new Date(m.createdAt) : new Date(),
         images: storedMessage?.images,
         thinkingTime: storedMessage?.thinkingTime,
         thinkingLevel: storedMessage?.thinkingLevel,
       }
     })
-  }, [messages, conversation?.messages])
+  }, [messages, conversation?.messages, isLoading])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
