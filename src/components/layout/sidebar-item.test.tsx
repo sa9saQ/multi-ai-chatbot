@@ -31,7 +31,7 @@ describe('SidebarItem', () => {
     expect(screen.getByText('Test Conversation')).toBeInTheDocument()
   })
 
-  it('shows delete button on hover', () => {
+  it('renders actions dropdown menu', () => {
     render(
       <SidebarItem
         conversation={mockConversation}
@@ -41,15 +41,15 @@ describe('SidebarItem', () => {
         onRename={vi.fn()}
       />
     )
-    // Delete button should exist even if not visible
-    const deleteButton = screen.getByRole('button', { name: /delete/i })
-    expect(deleteButton).toBeInTheDocument()
+    // Actions should be accessible via dropdown menu
+    const menuTrigger = screen.getByRole('button', { name: /actions/i })
+    expect(menuTrigger).toBeInTheDocument()
   })
 
-  it('truncates long titles without hiding action buttons', () => {
+  it('truncates long titles without hiding actions menu', () => {
     const longTitleConversation = {
       ...mockConversation,
-      title: 'This is a very long conversation title that should be truncated but the delete and edit buttons should still be visible',
+      title: 'This is a very long conversation title that should be truncated but the actions menu should still be visible',
     }
     render(
       <SidebarItem
@@ -60,10 +60,8 @@ describe('SidebarItem', () => {
         onRename={vi.fn()}
       />
     )
-    // Buttons should still exist
-    const deleteButton = screen.getByRole('button', { name: /delete/i })
-    const editButton = screen.getByRole('button', { name: /edit/i })
-    expect(deleteButton).toBeInTheDocument()
-    expect(editButton).toBeInTheDocument()
+    // Actions menu should still exist (dropdown trigger with aria-haspopup="menu")
+    const actionsMenu = screen.getByRole('button', { name: /^actions$/i })
+    expect(actionsMenu).toBeInTheDocument()
   })
 })

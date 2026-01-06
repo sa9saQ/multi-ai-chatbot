@@ -32,11 +32,23 @@ vi.mock('@/hooks/use-mounted', () => ({
 }))
 
 describe('Sidebar', () => {
-  it('renders without ScrollArea clipping issues', async () => {
+  it('renders new chat button', async () => {
     // This test documents that we replaced ScrollArea with overflow-y-auto
     // to prevent horizontal clipping of action buttons
     const { Sidebar } = await import('./sidebar')
     render(<Sidebar />)
     expect(screen.getByText('newChat')).toBeInTheDocument()
+  })
+
+  it('renders settings link', async () => {
+    const { Sidebar } = await import('./sidebar')
+    render(<Sidebar />)
+    expect(screen.getByText('settings')).toBeInTheDocument()
+  })
+
+  it('displays no conversations message when empty', async () => {
+    const { Sidebar } = await import('./sidebar')
+    render(<Sidebar />)
+    expect(screen.getByText('noConversations')).toBeInTheDocument()
   })
 })
