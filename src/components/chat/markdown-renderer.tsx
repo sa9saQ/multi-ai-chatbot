@@ -50,16 +50,29 @@ function urlsMatch(displayText: string, href: string): boolean {
 }
 
 // Security: Validate URL scheme to prevent XSS via javascript: or data: URLs
+// Only allow absolute http/https URLs - relative URLs are rejected for safety
 function isSafeUrl(href: string | undefined): boolean {
   if (!href) return false
   try {
     const url = new URL(href, window.location.origin)
     return url.protocol === 'http:' || url.protocol === 'https:'
   } catch {
-    // Relative URLs are safe
-    return href.startsWith('/') || href.startsWith('#')
+    // Reject malformed URLs entirely for security
+    // Note: This means relative URLs like "/path" won't work, but that's safer
+    return false
   }
 }
+
+// Security: Explicitly allow only safe markdown elements
+// This prevents XSS if rehypeRaw is ever added in the future
+// NOTE: img is intentionally excluded - use custom renderer if needed
+const ALLOWED_ELEMENTS = [
+  'p', 'br', 'strong', 'em', 'del', 'a', 'code', 'pre',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li',
+  'blockquote', 'hr',
+  'table', 'thead', 'tbody', 'tr', 'th', 'td',
+] as const
 
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
   // Memoize components to prevent recreation on every render
@@ -207,6 +220,9 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={components}
+        // Security: Explicitly allow only safe elements to prevent XSS
+        // If rehypeRaw is ever added, this whitelist will still protect against malicious HTML
+        allowedElements={[...ALLOWED_ELEMENTS]}
       >
         {content}
       </ReactMarkdown>

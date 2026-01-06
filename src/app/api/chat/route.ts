@@ -137,8 +137,15 @@ const ALLOWED_PART_TYPES = ['text', 'image', 'file', 'tool-invocation', 'tool-re
 // Maximum text length per part to prevent DoS (100KB per text part)
 const MAX_TEXT_PART_LENGTH = 100 * 1024
 
-// Maximum parts array length to prevent memory exhaustion
+// Maximum parts array length to prevent memory exhaustion.
+// 50 is chosen to comfortably cover typical UI usage (multi-part messages with
+// several text sections and up to MAX_IMAGES_PER_REQUEST images) while preventing
+// attackers from sending thousands of parts to exhaust server memory.
 const MAX_PARTS_PER_MESSAGE = 50
+
+// Maximum base64 string length for early rejection (before expensive processing)
+// 15MB of base64 is roughly 11MB of binary data - slightly above MAX_IMAGE_SIZE_BYTES
+const MAX_IMAGE_STRING_LENGTH = 15 * 1024 * 1024
 
 // Validate message structure for AI SDK v6 UIMessage format
 function isValidUIMessage(msg: unknown): boolean {
@@ -179,6 +186,8 @@ function isValidUIMessage(msg: unknown): boolean {
 }
 
 // Extract text content from UIMessage parts for security checks
+// Uses space separator (not empty string) to prevent word fusion that could evade pattern detection
+// e.g., "bad" + "word" as separate parts should become "bad word", not "badword"
 function extractTextFromParts(parts: Array<{ type: string; text?: string }>): string {
   return parts
     .filter((p): p is { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string')
@@ -254,6 +263,31 @@ export async function POST(req: Request) {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       })
+    }
+
+    // Early validation of images array to reject oversized payloads before expensive processing
+    // This prevents DoS attacks via large base64 strings consuming CPU/memory
+    if (images) {
+      if (!Array.isArray(images)) {
+        return new Response(JSON.stringify({ error: 'Images must be an array' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (images.length > MAX_IMAGES_PER_REQUEST) {
+        return new Response(JSON.stringify({ error: `Maximum ${MAX_IMAGES_PER_REQUEST} images allowed per request` }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      for (const img of images) {
+        if (typeof img !== 'string' || img.length > MAX_IMAGE_STRING_LENGTH) {
+          return new Response(JSON.stringify({ error: 'Invalid or oversized image data' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+      }
     }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -362,15 +396,14 @@ export async function POST(req: Request) {
         }
 
         // Update the message with images
+        // Note: We only set role and content as these are the only properties
+        // relevant for user messages. The SDK's ModelMessage type for user role
+        // has strict content typing, so we construct a clean object rather than
+        // spreading the original (which could cause type conflicts).
         if (validatedImages.length > 0) {
-          // Create a properly typed content array
-          const newContent: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> = [
-            ...currentContent,
-            ...validatedImages,
-          ]
           modelMessages[lastUserMessageIndex] = {
-            role: 'user',
-            content: newContent,
+            role: 'user' as const,
+            content: [...currentContent, ...validatedImages],
           }
         }
       }
@@ -456,6 +489,8 @@ When asked about news, current events, or information gathering:
     // Map 'xhigh' to 'high' for OpenAI API (xhigh is internal UI value, API only accepts low/medium/high)
     const apiReasoningEffort = effectiveThinkingLevel === 'xhigh' ? 'high' : effectiveThinkingLevel
 
+    // Note: onError is handled in toUIMessageStreamResponse below with proper error mapping
+    // streamText's onError is intentionally omitted to avoid duplicate handling
     const result = streamText({
       model,
       system: systemPrompt,
@@ -471,11 +506,6 @@ When asked about news, current events, or information gathering:
           },
         },
       }),
-      // Handle streaming errors (e.g., billing_not_active)
-      // These errors occur DURING the stream and won't be caught by try-catch
-      onError({ error }) {
-        console.error('Streaming error:', error)
-      },
     })
 
     // Use toUIMessageStreamResponse for proper error handling
