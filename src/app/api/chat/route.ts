@@ -13,8 +13,11 @@ function isValidThinkingLevel(level: unknown): level is ThinkingLevel {
 // Edge Runtime has known issues with base64 image processing
 export const runtime = 'nodejs'
 
-// Allow responses up to 5 minutes for reasoning models (o1, o3, gpt-5.2-pro)
-// These models spend significant time "thinking" before responding
+// Maximum ceiling for all requests handled by this route: up to 5 minutes.
+// This higher limit is primarily to support reasoning models (o1, o3, gpt-5.2-pro),
+// which can spend significant time "thinking" before responding. Non-reasoning
+// models also use this ceiling but typically complete much sooner.
+// Rate limiting (30 req/min per IP) helps mitigate resource exhaustion risks.
 export const maxDuration = 300
 
 // Multimodal content part types
@@ -128,6 +131,15 @@ function isValidAttachment(attachment: unknown): attachment is Attachment {
   )
 }
 
+// Whitelist of allowed part types for security (prevent unknown types from causing issues)
+const ALLOWED_PART_TYPES = ['text', 'image', 'file', 'tool-invocation', 'tool-result'] as const
+
+// Maximum text length per part to prevent DoS (100KB per text part)
+const MAX_TEXT_PART_LENGTH = 100 * 1024
+
+// Maximum parts array length to prevent memory exhaustion
+const MAX_PARTS_PER_MESSAGE = 50
+
 // Validate message structure for AI SDK v6 UIMessage format
 function isValidUIMessage(msg: unknown): boolean {
   if (typeof msg !== 'object' || msg === null) return false
@@ -139,12 +151,28 @@ function isValidUIMessage(msg: unknown): boolean {
   // Must have parts array (AI SDK v6 format)
   if (!Array.isArray(m.parts)) return false
 
-  // Validate each part
+  // Limit parts array length to prevent DoS
+  if (m.parts.length > MAX_PARTS_PER_MESSAGE) return false
+
+  // Validate each part with strict type checking
   for (const part of m.parts) {
     if (typeof part !== 'object' || part === null) return false
     const p = part as Record<string, unknown>
-    // Accept text, image, file, and other valid part types
+
+    // Type must be a string and in whitelist
     if (typeof p.type !== 'string') return false
+    if (!ALLOWED_PART_TYPES.includes(p.type as typeof ALLOWED_PART_TYPES[number])) return false
+
+    // For text parts, validate text is a string with size limit
+    if (p.type === 'text') {
+      if (typeof p.text !== 'string') return false
+      if (p.text.length > MAX_TEXT_PART_LENGTH) return false
+    }
+
+    // For image parts, validate image is a string (data URL validation done separately)
+    if (p.type === 'image') {
+      if (typeof p.image !== 'string') return false
+    }
   }
 
   return true
@@ -158,11 +186,8 @@ function extractTextFromParts(parts: Array<{ type: string; text?: string }>): st
     .join(' ')
 }
 
-interface ChatMessage {
-  role: AllowedRole
-  content: string | ContentPart[]
-  experimental_attachments?: Attachment[]
-}
+// Note: ChatMessage interface removed - no longer used after AI SDK v6 migration
+// Now using UIMessage format directly from 'ai' package
 
 export async function POST(req: Request) {
   // Rate limiting check

@@ -33,6 +33,22 @@ function isStandaloneUrl(text: string): boolean {
   }
 }
 
+// Security: Check if display text URL matches href to prevent phishing
+// e.g., [https://good.com](https://evil.com) would show good.com but link to evil.com
+function urlsMatch(displayText: string, href: string): boolean {
+  try {
+    const displayUrl = new URL(displayText.trim())
+    const hrefUrl = new URL(href)
+    // Compare normalized URLs (hostname is case-insensitive, path is case-sensitive)
+    return (
+      displayUrl.hostname.toLowerCase() === hrefUrl.hostname.toLowerCase() &&
+      displayUrl.pathname === hrefUrl.pathname
+    )
+  } catch {
+    return false
+  }
+}
+
 // Security: Validate URL scheme to prevent XSS via javascript: or data: URLs
 function isSafeUrl(href: string | undefined): boolean {
   if (!href) return false
@@ -49,8 +65,8 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
   // Memoize components to prevent recreation on every render
   const components = React.useMemo(() => ({
     // Code blocks
-    code({ className: codeClassName, children, ...props }: { className?: string; children?: React.ReactNode }) {
-      const match = /language-(\w+)/.exec(codeClassName || '')
+    code({ className, children, ...props }: { className?: string; children?: React.ReactNode }) {
+      const match = /language-(\w+)/.exec(className || '')
       const isInline = !match && !String(children).includes('\n')
 
       if (isInline) {
@@ -77,12 +93,17 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     },
     // Links - styled as cards for standalone URLs
     // Security: Validate URL scheme to prevent XSS (javascript:, data:, etc.)
+    // Security: Only render as card if display URL matches href (phishing prevention)
     a({ href, children }: { href?: string; children?: React.ReactNode }) {
       const childText = String(children)
       const isUrlText = isStandaloneUrl(childText)
       const safeHref = isSafeUrl(href) ? href : '#'
 
-      if (isUrlText && href && isSafeUrl(href)) {
+      // Only render as card if:
+      // 1. Display text is a URL
+      // 2. href is safe
+      // 3. Display URL matches href (prevents [https://good.com](https://evil.com) phishing)
+      if (isUrlText && href && isSafeUrl(href) && urlsMatch(childText, href)) {
         // Render as a link card
         return (
           <a

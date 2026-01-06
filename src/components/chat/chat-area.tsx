@@ -26,9 +26,13 @@ function isSupportedRole(role: string): role is MessageRole {
 type MessagePart = { type: string; text?: string }
 
 // Helper to extract text content from AI SDK v6 message parts
+// Type guard ensures both type === 'text' AND text is actually a string
 function extractTextFromParts(parts?: MessagePart[]): string {
   return parts
-    ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    ?.filter(
+      (p): p is { type: 'text'; text: string } =>
+        p.type === 'text' && typeof p.text === 'string'
+    )
     .map((p) => p.text)
     .join('') ?? ''
 }
