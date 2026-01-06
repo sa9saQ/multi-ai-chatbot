@@ -22,6 +22,17 @@ function isSupportedRole(role: string): role is MessageRole {
   return SUPPORTED_ROLES.includes(role as MessageRole)
 }
 
+// AI SDK v6 message part types
+type MessagePart = { type: string; text?: string }
+
+// Helper to extract text content from AI SDK v6 message parts
+function extractTextFromParts(parts?: MessagePart[]): string {
+  return parts
+    ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map((p) => p.text)
+    .join('') ?? ''
+}
+
 export function ChatArea() {
   const t = useTranslations('chat')
   const {
@@ -100,11 +111,14 @@ export function ChatArea() {
   // Track previous conversation ID to detect actual conversation switches (not status changes)
   const prevConversationIdRef = React.useRef<string | null>(currentConversationId)
 
+  // Memoize transport to prevent recreation on every render
+  const transport = React.useMemo(
+    () => new DefaultChatTransport({ api: '/api/chat' }),
+    []
+  )
+
   const { messages, sendMessage, status, setMessages, stop } = useChat({
-    // Use DefaultChatTransport for AI SDK v6
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-    }),
+    transport,
     // Force re-initialization when model/provider changes
     id: `${selectedProvider}-${selectedModelId}`,
     // AI SDK v6: Use 'messages' instead of 'initialMessages', with parts array
@@ -115,7 +129,7 @@ export function ChatArea() {
         parts: [{ type: 'text' as const, text: m.content }],
         createdAt: m.createdAt,
       })) ?? [],
-    onFinish: ({ message }) => {
+    onFinish: ({ message }: { message: { parts?: MessagePart[] } }) => {
       setGeneratingConversationId(null)
       // Use pendingContextRef to get the context captured at submit time
       // This avoids stale closure issues since onFinish is called with the correct message
@@ -125,11 +139,8 @@ export function ChatArea() {
         const thinkingTime = context.isThinkingModel
           ? Math.round((Date.now() - context.startTime) / 1000)
           : undefined
-        // AI SDK v6: Extract text content from message parts
-        const textContent = message.parts
-          ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-          .map((p) => p.text)
-          .join('') ?? ''
+        // AI SDK v6: Extract text content from message parts using helper
+        const textContent = extractTextFromParts(message.parts)
         addMessage(context.convId, {
           role: 'assistant',
           content: textContent,
@@ -341,11 +352,8 @@ export function ChatArea() {
     const filteredMessages = messages.filter((m: any) => {
       // Keep only user/assistant roles
       if (!isSupportedRole(m.role)) return false
-      // AI SDK v6: Check for content in parts array
-      const textContent = m.parts
-        ?.filter((p: { type: string }) => p.type === 'text')
-        .map((p: { text: string }) => p.text)
-        .join('') ?? ''
+      // AI SDK v6: Check for content in parts array using helper
+      const textContent = extractTextFromParts(m.parts)
       const hasContent = textContent.trim().length > 0
       // Filter out messages that ONLY have tool invocations without content
       const hasToolParts = m.parts?.some((p: { type: string }) => p.type === 'tool-invocation')
@@ -353,14 +361,14 @@ export function ChatArea() {
       return true
     })
 
-    return filteredMessages.map((m: { id: string; role: string; parts?: Array<{ type: string; text?: string }>; createdAt?: Date }, index: number) => {
-      // Match by index - storedMessages and filteredMessages should be in sync
-      const storedMessage = storedMessages[index]
-      // AI SDK v6: Extract text content from parts
-      const textContent = m.parts
-        ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-        .map((p) => p.text)
-        .join('') ?? ''
+    // Build ID-to-message map for robust metadata retrieval (avoids index mismatch issues)
+    const storedMessageMap = new Map(storedMessages.map((m) => [m.id, m]))
+
+    return filteredMessages.map((m: { id: string; role: string; parts?: MessagePart[]; createdAt?: Date }) => {
+      // Match by ID for robust metadata retrieval (index-based matching is fragile)
+      const storedMessage = storedMessageMap.get(m.id)
+      // AI SDK v6: Extract text content from parts using helper
+      const textContent = extractTextFromParts(m.parts)
       return {
         id: m.id,
         role: m.role as MessageRole,

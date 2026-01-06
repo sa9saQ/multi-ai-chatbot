@@ -131,7 +131,7 @@ export function SidebarItem({
       <div
         role="button"
         tabIndex={0}
-        aria-current={isActive ? 'true' : undefined}
+        aria-current={isActive ? 'page' : undefined}
         aria-disabled={isGenerating}
         aria-label={`${conversation.title || t('newChat')} - ${conversation.messageCount} ${t('messages')}`}
         onClick={() => {

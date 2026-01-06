@@ -8,7 +8,7 @@
 
 - **Framework**: Next.js 16 (App Router) + React 19
 - **Styling**: Tailwind CSS 4.x + shadcn/ui
-- **AI Integration**: Vercel AI SDK 4.x
+- **AI Integration**: Vercel AI SDK 6.x
 - **State Management**: Zustand 5.x
 - **i18n**: next-intl 4.x
 - **Theme**: next-themes
