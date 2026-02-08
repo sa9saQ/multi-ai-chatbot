@@ -1,4 +1,4 @@
-import { streamText, APICallError, type ModelMessage } from 'ai'
+import { streamText, APICallError, convertToModelMessages, type UIMessage } from 'ai'
 import { getLanguageModel, getWebSearchTools, isOpenAIReasoningModel } from '@/lib/ai/providers'
 import { sanitizeInput, validateApiKey, containsDangerousPatterns } from '@/lib/ai/sanitize'
 import { AI_MODELS, VALID_THINKING_LEVELS, type AIProvider, type ThinkingLevel } from '@/types/ai'
@@ -12,6 +12,13 @@ function isValidThinkingLevel(level: unknown): level is ThinkingLevel {
 // Use Node.js runtime for better base64 image handling
 // Edge Runtime has known issues with base64 image processing
 export const runtime = 'nodejs'
+
+// Maximum ceiling for all requests handled by this route: up to 5 minutes.
+// This higher limit is primarily to support reasoning models (o1, o3, gpt-5.2-pro),
+// which can spend significant time "thinking" before responding. Non-reasoning
+// models also use this ceiling but typically complete much sooner.
+// Rate limiting (30 req/min per IP) helps mitigate resource exhaustion risks.
+export const maxDuration = 300
 
 // Multimodal content part types
 interface TextPart {
@@ -124,35 +131,72 @@ function isValidAttachment(attachment: unknown): attachment is Attachment {
   )
 }
 
-// Validate message structure
-function isValidMessage(msg: unknown): msg is ChatMessage {
+// Whitelist of allowed part types for security (prevent unknown types from causing issues)
+const ALLOWED_PART_TYPES = ['text', 'image', 'file', 'tool-invocation', 'tool-result'] as const
+
+// Maximum text length per part to prevent DoS (100KB per text part)
+const MAX_TEXT_PART_LENGTH = 100 * 1024
+
+// Maximum parts array length to prevent memory exhaustion.
+// 50 is chosen to comfortably cover typical UI usage (multi-part messages with
+// several text sections and up to MAX_IMAGES_PER_REQUEST images) while preventing
+// attackers from sending thousands of parts to exhaust server memory.
+const MAX_PARTS_PER_MESSAGE = 50
+
+// Maximum base64 string length for early rejection (before expensive processing)
+// 15MB of base64 is roughly 11MB of binary data - slightly above MAX_IMAGE_SIZE_BYTES
+const MAX_IMAGE_STRING_LENGTH = 15 * 1024 * 1024
+
+// Validate message structure for AI SDK v6 UIMessage format
+function isValidUIMessage(msg: unknown): boolean {
   if (typeof msg !== 'object' || msg === null) return false
   const m = msg as Record<string, unknown>
 
   // Role must be allowed (user or assistant only)
   if (!isAllowedRole(m.role)) return false
 
-  // Content must be string or array of valid parts
-  const hasValidContent =
-    typeof m.content === 'string' ||
-    (Array.isArray(m.content) && m.content.every(isValidContentPart))
-  if (!hasValidContent) return false
+  // Must have parts array (AI SDK v6 format)
+  if (!Array.isArray(m.parts)) return false
 
-  // experimental_attachments must be undefined or array of valid attachments
-  // This prevents .entries() from throwing on non-array types
-  if (m.experimental_attachments !== undefined) {
-    if (!Array.isArray(m.experimental_attachments)) return false
-    if (!m.experimental_attachments.every(isValidAttachment)) return false
+  // Limit parts array length to prevent DoS
+  if (m.parts.length > MAX_PARTS_PER_MESSAGE) return false
+
+  // Validate each part with strict type checking
+  for (const part of m.parts) {
+    if (typeof part !== 'object' || part === null) return false
+    const p = part as Record<string, unknown>
+
+    // Type must be a string and in whitelist
+    if (typeof p.type !== 'string') return false
+    if (!ALLOWED_PART_TYPES.includes(p.type as typeof ALLOWED_PART_TYPES[number])) return false
+
+    // For text parts, validate text is a string with size limit
+    if (p.type === 'text') {
+      if (typeof p.text !== 'string') return false
+      if (p.text.length > MAX_TEXT_PART_LENGTH) return false
+    }
+
+    // For image parts, validate image is a string (data URL validation done separately)
+    if (p.type === 'image') {
+      if (typeof p.image !== 'string') return false
+    }
   }
 
   return true
 }
 
-interface ChatMessage {
-  role: AllowedRole
-  content: string | ContentPart[]
-  experimental_attachments?: Attachment[]
+// Extract text content from UIMessage parts for security checks
+// Uses space separator (not empty string) to prevent word fusion that could evade pattern detection
+// e.g., "bad" + "word" as separate parts should become "bad word", not "badword"
+function extractTextFromParts(parts: Array<{ type: string; text?: string }>): string {
+  return parts
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string')
+    .map((p) => p.text)
+    .join(' ')
 }
+
+// Note: ChatMessage interface removed - no longer used after AI SDK v6 migration
+// Now using UIMessage format directly from 'ai' package
 
 export async function POST(req: Request) {
   // Rate limiting check
@@ -195,6 +239,7 @@ export async function POST(req: Request) {
     }
 
     // Type assertion after JSON parsing - validation follows
+    // AI SDK v6: messages are in UIMessage format with parts array
     const {
       messages,
       modelId,
@@ -202,13 +247,15 @@ export async function POST(req: Request) {
       apiKey,
       thinkingLevel,
       webSearchEnabled,
+      images, // Images passed from client body (AI SDK v6)
     } = body as {
-      messages: ChatMessage[]
+      messages: UIMessage[]
       modelId: string
       provider: AIProvider
       apiKey: string
       thinkingLevel?: ThinkingLevel
       webSearchEnabled?: boolean
+      images?: string[] // Base64 images from client
     }
 
     if (!validateApiKey(apiKey)) {
@@ -218,6 +265,31 @@ export async function POST(req: Request) {
       })
     }
 
+    // Early validation of images array to reject oversized payloads before expensive processing
+    // This prevents DoS attacks via large base64 strings consuming CPU/memory
+    if (images) {
+      if (!Array.isArray(images)) {
+        return new Response(JSON.stringify({ error: 'Images must be an array' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (images.length > MAX_IMAGES_PER_REQUEST) {
+        return new Response(JSON.stringify({ error: `Maximum ${MAX_IMAGES_PER_REQUEST} images allowed per request` }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      for (const img of images) {
+        if (typeof img !== 'string' || img.length > MAX_IMAGE_STRING_LENGTH) {
+          return new Response(JSON.stringify({ error: 'Invalid or oversized image data' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+      }
+    }
+
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: 'Messages are required' }), {
         status: 400,
@@ -225,17 +297,18 @@ export async function POST(req: Request) {
       })
     }
 
-    // Validate message structure and filter out system role (prevent prompt injection)
-    // This is a critical security check - system role from client could manipulate AI behavior
-    const validatedMessages: ChatMessage[] = []
+    // Validate message structure for AI SDK v6 UIMessage format
+    // Filter out system role to prevent prompt injection
+    const validatedMessages: UIMessage[] = []
     for (const msg of messages) {
-      if (!isValidMessage(msg)) {
+      if (!isValidUIMessage(msg)) {
         return new Response(
-          JSON.stringify({ error: 'Invalid message format: each message must have a valid role (user/assistant) and content (string or content parts array)' }),
+          JSON.stringify({ error: 'Invalid message format: each message must have a valid role (user/assistant) and parts array' }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
-      validatedMessages.push(msg)
+      // Type assertion after validation
+      validatedMessages.push(msg as UIMessage)
     }
 
     if (!modelId || !provider) {
@@ -265,9 +338,7 @@ export async function POST(req: Request) {
     // Check for prompt injection attempts in user messages (text content only)
     const userMessages = validatedMessages.filter((m) => m.role === 'user')
     for (const message of userMessages) {
-      const textContent = typeof message.content === 'string'
-        ? message.content
-        : message.content.filter((p): p is TextPart => p.type === 'text').map(p => p.text).join(' ')
+      const textContent = extractTextFromParts(message.parts as Array<{ type: string; text?: string }>)
 
       if (containsDangerousPatterns(textContent)) {
         return new Response(
@@ -277,214 +348,135 @@ export async function POST(req: Request) {
       }
     }
 
-    // Process messages to handle multimodal content (experimental_attachments)
-    // Track image count and size across ALL messages in the request (DoS prevention)
-    let requestImageCount = 0
-    let requestTotalImageSize = 0
-    const imageRejections: ImageRejection[] = []
+    // AI SDK v6: Convert UIMessages to ModelMessages
+    const modelMessages = await convertToModelMessages(validatedMessages)
 
-    const processedMessages: ModelMessage[] = validatedMessages.map((message, messageIndex) => {
-      const hasMessageAttachments = message.experimental_attachments && message.experimental_attachments.length > 0
+    // Handle images passed in body (for multimodal support)
+    // Add images to the last user message if provided
+    if (images && images.length > 0 && modelMessages.length > 0) {
+      const lastUserMessageIndex = modelMessages.findLastIndex((m) => m.role === 'user')
+      if (lastUserMessageIndex !== -1) {
+        const lastUserMessage = modelMessages[lastUserMessageIndex]
+        // Convert content to array format if it's a string
+        const currentContent: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> =
+          typeof lastUserMessage.content === 'string'
+            ? [{ type: 'text' as const, text: lastUserMessage.content }]
+            : Array.isArray(lastUserMessage.content)
+              ? (lastUserMessage.content.filter(
+                  (p): p is { type: 'text'; text: string } | { type: 'image'; image: string } =>
+                    p.type === 'text' || p.type === 'image'
+                ))
+              : []
 
-      // If message has attachments, create multimodal content
-      if (hasMessageAttachments && message.role === 'user') {
-        const parts: ContentPart[] = []
+        // Validate and add images
+        const validatedImages: Array<{ type: 'image'; image: string }> = []
+        let requestImageCount = 0
+        let requestTotalImageSize = 0
 
-        // Add text content first
-        if (typeof message.content === 'string' && message.content.trim()) {
-          parts.push({ type: 'text', text: sanitizeInput(message.content) })
-        }
+        for (const image of images) {
+          // Validate data URL format
+          if (!isValidImageDataUrl(image)) continue
 
-        // Add images from experimental_attachments with validation
-        const attachments = message.experimental_attachments ?? []
-        
-        for (const [attachmentIndex, attachment] of attachments.entries()) {
-          const rejectionBase = {
-            messageIndex,
-            source: 'attachment' as const,
-            attachmentName: attachment.name,
-            attachmentIndex,
-          }
+          // Calculate size
+          const imageSize = getDataUrlSize(image)
 
-          // Validate data URL format first
-          if (!isValidImageDataUrl(attachment.url)) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'invalid_data_url',
-            })
-            continue
-          }
-          
-          // Calculate size once for efficiency
-          const imageSize = getDataUrlSize(attachment.url)
-          
-          // Check individual image size limit
-          if (imageSize > MAX_IMAGE_SIZE_BYTES) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'image_too_large',
-              sizeBytes: imageSize,
-            })
-            continue
-          }
-          
-          // Check request-level limits
-          if (requestImageCount >= MAX_IMAGES_PER_REQUEST) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'max_images_per_request_exceeded',
-            })
-            continue
-          }
-          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'max_total_image_size_exceeded',
-              sizeBytes: imageSize,
-            })
-            continue
-          }
-          
-          // Validate MIME type (don't trust client contentType)
-          const actualMimeType = getDataUrlMimeType(attachment.url)
-          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'unsupported_mime_type',
-              mimeType: actualMimeType,
-            })
-            continue
-          }
-          
-          // All checks passed - add the image
-          requestImageCount++
-          requestTotalImageSize += imageSize
-          parts.push({ type: 'image', image: attachment.url })
-        }
+          // Check limits
+          if (imageSize > MAX_IMAGE_SIZE_BYTES) continue
+          if (requestImageCount >= MAX_IMAGES_PER_REQUEST) continue
+          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) continue
 
-        // Fallback: if all attachments failed validation and no text, add empty text part
-        // AI SDK may error on empty content array
-        if (parts.length === 0) {
-          const sanitizedContent = typeof message.content === 'string' ? sanitizeInput(message.content) : ''
-          parts.push({ type: 'text', text: sanitizedContent })
-        }
-
-        return {
-          role: message.role,
-          content: parts,
-        } as ModelMessage
-      }
-
-      // Regular text message
-      if (typeof message.content === 'string') {
-        return {
-          role: message.role,
-          content: sanitizeInput(message.content),
-        } as ModelMessage
-      }
-
-      // Already multimodal content - sanitize text parts and validate image parts
-      // Apply same request-level limits as experimental_attachments path
-      const sanitizedContent: ContentPart[] = []
-      
-      for (const [partIndex, part] of message.content.entries()) {
-        if (part.type === 'text') {
-          sanitizedContent.push({ ...part, text: sanitizeInput(part.text) })
-          continue
-        }
-        
-        // Validate image parts with same rules as attachments
-        if (part.type === 'image') {
-          const rejectionBase = {
-            messageIndex,
-            source: 'content' as const,
-            partIndex,
-          }
-
-          // Validate data URL format first
-          if (!isValidImageDataUrl(part.image)) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'invalid_data_url',
-            })
-            continue
-          }
-          
-          // Calculate size once for efficiency
-          const imageSize = getDataUrlSize(part.image)
-          
-          // Check individual image size limit
-          if (imageSize > MAX_IMAGE_SIZE_BYTES) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'image_too_large',
-              sizeBytes: imageSize,
-            })
-            continue
-          }
-          
-          // Check request-level limits (shared with experimental_attachments)
-          if (requestImageCount >= MAX_IMAGES_PER_REQUEST) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'max_images_per_request_exceeded',
-            })
-            continue
-          }
-          if (requestTotalImageSize + imageSize > MAX_TOTAL_IMAGE_SIZE_BYTES) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'max_total_image_size_exceeded',
-              sizeBytes: imageSize,
-            })
-            continue
-          }
-          
           // Validate MIME type
-          const actualMimeType = getDataUrlMimeType(part.image)
-          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) {
-            imageRejections.push({
-              ...rejectionBase,
-              reason: 'unsupported_mime_type',
-              mimeType: actualMimeType,
-            })
-            continue
-          }
-          
-          // All checks passed - add the image
+          const actualMimeType = getDataUrlMimeType(image)
+          if (!actualMimeType || !ALLOWED_IMAGE_TYPES.includes(actualMimeType as typeof ALLOWED_IMAGE_TYPES[number])) continue
+
+          // All checks passed
           requestImageCount++
           requestTotalImageSize += imageSize
-          sanitizedContent.push(part)
+          validatedImages.push({ type: 'image' as const, image })
+        }
+
+        // Update the message with images
+        // Note: We only set role and content as these are the only properties
+        // relevant for user messages. The SDK's ModelMessage type for user role
+        // has strict content typing, so we construct a clean object rather than
+        // spreading the original (which could cause type conflicts).
+        if (validatedImages.length > 0) {
+          modelMessages[lastUserMessageIndex] = {
+            role: 'user' as const,
+            content: [...currentContent, ...validatedImages],
+          }
         }
       }
-
-      // Fallback: if all parts got filtered out, add empty text part
-      // AI SDK may error on empty content array
-      if (sanitizedContent.length === 0) {
-        sanitizedContent.push({ type: 'text', text: '' })
-      }
-
-      return {
-        role: message.role,
-        content: sanitizedContent,
-      } as ModelMessage
-    })
+    }
 
     // Pass webSearchEnabled to getLanguageModel (handles Google search grounding)
     const model = getLanguageModel(provider, modelId, apiKey, {
       webSearchEnabled: webSearchEnabled === true,
     })
 
+    // Get current date for system prompt
+    const now = new Date()
+    const currentDate = now.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long',
+    })
+
+    // System prompt for high-quality responses
+    // Include web search instructions only when enabled
+    const webSearchInstructions = webSearchEnabled ? `
+## CRITICAL: Web Search Instructions
+You have access to web search tools. **YOU MUST USE THEM** for:
+- ANY question about current events, news, or recent information
+- ANY question that requires up-to-date data (prices, weather, sports scores, etc.)
+- ANY question where your training data might be outdated
+
+**NEVER answer from training data alone** when the question is about:
+- "今日" (today), "最新" (latest), "現在" (current), "ニュース" (news)
+- Recent events, dates after your training cutoff
+- Real-time information (stocks, weather, etc.)
+
+**ALWAYS search first, then synthesize the results.**
+` : ''
+
+    const systemPrompt = `You are a helpful, knowledgeable AI assistant.
+Current date: ${currentDate}
+${webSearchInstructions}
+## Response Quality
+- Provide comprehensive, well-organized answers
+- Structure responses with clear visual hierarchy
+- Be thorough yet scannable - users should grasp key points quickly
+
+## News & Information Requests
+When asked about news, current events, or information gathering:
+- **Start with date**: 「${currentDate}時点の情報」
+- **Categorize clearly**: Use distinct categories like:
+  - 🏛️ **政治・経済**
+  - 🌍 **国際**
+  - 💻 **テクノロジー**
+  - 🎭 **エンタメ・スポーツ**
+  - 📊 **社会・生活**
+- **Keep each item brief**: 1-2 sentences per news item
+- **Use bullet points**: Each news item as a single bullet
+- **NO raw URLs in text**: Mention source names only (例: 「NHKによると」「日経新聞が報じた」)
+- **Group sources at end**: List sources in a "参考リンク" section at the bottom
+
+## General Formatting
+- Use markdown: **Bold** for headlines, ## for sections
+- Keep paragraphs short (2-3 sentences max)
+- Use emoji sparingly for visual categorization
+- Ensure adequate whitespace between sections
+
+## Language
+- Match the user's language (Japanese → Japanese, English → English)
+- For Japanese: Use natural, readable Japanese`
+
     // Get web search tools for all providers (OpenAI, Anthropic, Google)
     // All providers use tool-based search in AI SDK v6
     const webSearchTools = webSearchEnabled === true
       ? getWebSearchTools(provider, apiKey)
       : undefined
-
-    // Log image rejections for debugging (AI SDK v6 removed StreamData)
-    if (imageRejections.length > 0) {
-      console.warn('Image rejections:', imageRejections)
-    }
 
     // Check if this is an OpenAI reasoning model (requires special configuration)
     const isReasoningModel = provider === 'openai' && isOpenAIReasoningModel(modelId)
@@ -497,9 +489,12 @@ export async function POST(req: Request) {
     // Map 'xhigh' to 'high' for OpenAI API (xhigh is internal UI value, API only accepts low/medium/high)
     const apiReasoningEffort = effectiveThinkingLevel === 'xhigh' ? 'high' : effectiveThinkingLevel
 
+    // Note: onError is handled in toUIMessageStreamResponse below with proper error mapping
+    // streamText's onError is intentionally omitted to avoid duplicate handling
     const result = streamText({
       model,
-      messages: processedMessages,
+      system: systemPrompt,
+      messages: modelMessages,
       // Add web search tools for OpenAI and Anthropic when enabled
       ...(webSearchTools && { tools: webSearchTools }),
       // Configure reasoning effort for OpenAI reasoning models
@@ -513,7 +508,44 @@ export async function POST(req: Request) {
       }),
     })
 
-    return result.toTextStreamResponse()
+    // Use toUIMessageStreamResponse for proper error handling
+    // This propagates streaming errors to the client's onError callback
+    return result.toUIMessageStreamResponse({
+      onError: (error) => {
+        // Extract user-friendly message from the error
+        // Handle both Error instances and plain objects (OpenAI streaming errors)
+        let message = ''
+
+        if (error instanceof Error) {
+          message = error.message || ''
+        } else if (typeof error === 'object' && error !== null) {
+          // Handle OpenAI streaming error format: { type: 'error', error: { type, code, message } }
+          const errObj = error as Record<string, unknown>
+          if (errObj.error && typeof errObj.error === 'object') {
+            const innerError = errObj.error as Record<string, unknown>
+            message = String(innerError.message || innerError.type || innerError.code || '')
+          } else {
+            message = String(errObj.message || errObj.type || errObj.code || '')
+          }
+        }
+
+        // Map common error types to user-friendly messages
+        if (message.includes('billing_not_active') || message.includes('billing')) {
+          return 'API billing is not active. Please check your billing settings on OpenAI platform.'
+        }
+        if (message.includes('rate_limit') || message.includes('Rate limit')) {
+          return 'Rate limit exceeded. Please try again later.'
+        }
+        if (message.includes('invalid_api_key') || message.includes('Invalid API key')) {
+          return 'Invalid API key. Please check your API key settings.'
+        }
+        if (message.includes('model_not_found') || message.includes('does not exist')) {
+          return 'Model not found. Please select a different model.'
+        }
+
+        return message || 'An error occurred during streaming.'
+      },
+    })
   } catch (error) {
     // Structured error logging without sensitive information
     console.error('Chat API error:', {

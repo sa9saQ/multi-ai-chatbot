@@ -56,13 +56,9 @@ export function getLanguageModel(
   // Note: webSearchEnabled is now handled via tools in getWebSearchTools()
   // Google search grounding is also done via google.tools.googleSearch()
 
-  // Use .responses() for OpenAI reasoning models (o-series, gpt-5.2-pro)
-  // These models require special response handling for extended thinking
-  if (provider === 'openai' && isOpenAIReasoningModel(modelId)) {
-    const openaiProvider = createOpenAI({ apiKey })
-    return openaiProvider.responses(modelId)
-  }
-
+  // AI SDK v6: Use standard provider call for all models including reasoning models
+  // The .responses() method was causing streaming issues (responses buffered until complete)
+  // streamText handles reasoning models correctly with the standard provider
   const aiProvider = createAIProvider(provider, apiKey)
   return aiProvider(modelId)
 }

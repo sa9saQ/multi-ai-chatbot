@@ -53,7 +53,8 @@
     "messages": "messages",
     "deleteConversation": "Delete conversation",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "actions": "Actions"
   },
   "model": {
     "select": "Select Model",

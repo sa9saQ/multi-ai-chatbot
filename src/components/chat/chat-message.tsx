@@ -5,8 +5,8 @@ import { useLocale, useTranslations } from 'next-intl'
 import { User, Bot } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Message } from '@/types/chat'
-import { CodeBlock } from './code-block'
 import { ThinkingTimeDisplay } from './typing-indicator'
+import { MarkdownRenderer } from './markdown-renderer'
 
 interface ChatMessageProps {
   message: Message
@@ -36,40 +36,6 @@ function MessageImages({ images }: { images: string[] }) {
   )
 }
 
-function parseMessageContent(content: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = []
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
-
-  let lastIndex = 0
-  let match
-
-  while ((match = codeBlockRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(
-        <span key={`text-${lastIndex}`} className="whitespace-pre-wrap">
-          {content.slice(lastIndex, match.index)}
-        </span>
-      )
-    }
-
-    const language = match[1] || 'text'
-    const code = match[2].trim()
-
-    parts.push(<CodeBlock key={`code-${match.index}`} language={language} code={code} />)
-
-    lastIndex = match.index + match[0].length
-  }
-
-  if (lastIndex < content.length) {
-    parts.push(
-      <span key={`text-${lastIndex}`} className="whitespace-pre-wrap">
-        {content.slice(lastIndex)}
-      </span>
-    )
-  }
-
-  return parts
-}
 
 export function ChatMessage({ message, className }: ChatMessageProps) {
   const locale = useLocale()
@@ -102,7 +68,7 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
       <div
         className={cn(
           'flex max-w-[90%] flex-col gap-1 rounded-lg px-3 py-2 sm:max-w-[85%] sm:px-4 md:max-w-[75%] lg:max-w-[65%]',
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
         )}
       >
         {/* Show thinking time badge for reasoning model responses */}
@@ -117,7 +83,16 @@ export function ChatMessage({ message, className }: ChatMessageProps) {
         {message.images && message.images.length > 0 && (
           <MessageImages images={message.images} />
         )}
-        <div className="text-sm">{parseMessageContent(message.content)}</div>
+        <div className={cn(
+          'text-base',
+          !isUser && 'text-slate-900 dark:text-slate-50'
+        )}>
+          {isUser ? (
+            <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : (
+            <MarkdownRenderer content={message.content} />
+          )}
+        </div>
         <time
           className={cn(
             'text-xs',
